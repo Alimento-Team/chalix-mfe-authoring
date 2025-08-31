@@ -12,6 +12,17 @@ export function useSequenceNavigationMetadata(courseId, currentSequenceId, curre
   const isLastUnit = !nextUrl;
   const sequenceIds = useSelector(getSequenceIds);
   const sequenceIndex = sequenceIds.indexOf(currentSequenceId);
+
+  // Handle case where sequence model doesn't exist (malformed hierarchy)
+  if (!sequence || !sequence.unitIds) {
+    return {
+      isFirstUnit: true,
+      isLastUnit: true,
+      nextLink: null,
+      previousLink: null,
+    };
+  }
+
   const unitIndex = sequence.unitIds.indexOf(currentUnitId);
 
   const nextSequenceId = sequenceIndex < sequenceIds.length - 1 ? sequenceIds[sequenceIndex + 1] : null;

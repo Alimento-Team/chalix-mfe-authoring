@@ -28,8 +28,8 @@ import type { XBlock } from '@src/data/types';
 
 interface UnitCardProps {
   unit: XBlock;
-  subsection: XBlock;
-  section: XBlock;
+  subsection: XBlock | null;
+  section: XBlock | null;
   onOpenPublishModal: () => void;
   onOpenConfigureModal: () => void;
   onEditSubmit: (itemId: string, sectionId: string, displayName: string) => void,
@@ -113,14 +113,17 @@ const UnitCard = ({
   // add actions to control display of move up & down menu buton.
   const moveUpDetails = getPossibleMoves(index, -1);
   const moveDownDetails = getPossibleMoves(index, 1);
-  actions.allowMoveUp = !isEmpty(moveUpDetails) && !subsection.upstreamInfo?.upstreamRef;
-  actions.allowMoveDown = !isEmpty(moveDownDetails) && !subsection.upstreamInfo?.upstreamRef;
-  actions.deletable = actions.deletable && !subsection.upstreamInfo?.upstreamRef;
-  actions.duplicable = actions.duplicable && !subsection.upstreamInfo?.upstreamRef;
+  
+  // Handle null subsection (simplified view)
+  const upstreamRef = subsection?.upstreamInfo?.upstreamRef;
+  actions.allowMoveUp = !isEmpty(moveUpDetails) && !upstreamRef;
+  actions.allowMoveDown = !isEmpty(moveDownDetails) && !upstreamRef;
+  actions.deletable = actions.deletable && !upstreamRef;
+  actions.duplicable = actions.duplicable && !upstreamRef;
 
   const parentInfo = {
-    graded: subsection.graded,
-    isTimeLimited: subsection.isTimeLimited,
+    graded: subsection?.graded || false,
+    isTimeLimited: subsection?.isTimeLimited || false,
   };
 
   const unitStatus = getItemStatus({
@@ -132,13 +135,17 @@ const UnitCard = ({
 
   const handleClickMenuButton = () => {
     dispatch(setCurrentItem(unit));
-    dispatch(setCurrentSection(section));
-    dispatch(setCurrentSubsection(subsection));
+    if (section) {
+      dispatch(setCurrentSection(section));
+    }
+    if (subsection) {
+      dispatch(setCurrentSubsection(subsection));
+    }
   };
 
   const handleEditSubmit = (titleValue: string) => {
     if (displayName !== titleValue) {
-      onEditSubmit(id, section.id, titleValue);
+      onEditSubmit(id, section?.id || '', titleValue);
       return;
     }
 
@@ -158,7 +165,9 @@ const UnitCard = ({
   };
 
   const handleOnPostChangeSync = useCallback(() => {
-    dispatch(fetchCourseSectionQuery([section.id]));
+    if (section?.id) {
+      dispatch(fetchCourseSectionQuery([section.id]));
+    }
     if (courseId) {
       invalidateLinksQuery(queryClient, courseId);
     }
@@ -203,7 +212,7 @@ const UnitCard = ({
   const isDraggable = (
     actions.draggable
       && (actions.allowMoveUp || actions.allowMoveDown)
-      && !subsection.upstreamInfo?.upstreamRef
+      && !subsection?.upstreamInfo?.upstreamRef
   );
 
   return (
@@ -217,7 +226,7 @@ const UnitCard = ({
           displayName,
         }}
         isDraggable={isDraggable}
-        isDroppable={subsection.actions.childAddable}
+        isDroppable={subsection?.actions?.childAddable || false}
         componentStyle={{
           background: '#fdfdfd',
           ...borderStyle,

@@ -13,6 +13,7 @@ import CustomPages from './custom-pages';
 import { FilesPage, VideosPage } from './files-and-videos';
 import { AdvancedSettings } from './advanced-settings';
 import { CourseOutline } from './course-outline';
+import SimplifiedCourseOutline from './course-outline/SimplifiedCourseOutline';
 import ScheduleAndDetails from './schedule-and-details';
 import { GradingSettings } from './grading-settings';
 import CourseTeam from './course-team/CourseTeam';
@@ -52,6 +53,10 @@ const CourseAuthoringRoutes = () => {
       <Routes>
         <Route
           path="/"
+          element={<PageWrap><SimplifiedCourseOutline courseId={courseId} /></PageWrap>}
+        />
+        <Route
+          path="traditional"
           element={<PageWrap><CourseOutline courseId={courseId} /></PageWrap>}
         />
         <Route

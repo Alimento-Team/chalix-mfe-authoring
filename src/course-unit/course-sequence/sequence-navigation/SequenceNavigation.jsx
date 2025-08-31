@@ -35,7 +35,8 @@ const SequenceNavigation = ({
 
   const shouldDisplayNotificationTriggerInSequence = useWindowSize().width < breakpoints.small.minWidth;
   const renderUnitButtons = () => {
-    if (sequence.unitIds.length === 0 || unitId === null) {
+    // Handle case where sequence model doesn't exist (malformed hierarchy)
+    if (!sequence || !sequence.unitIds || sequence.unitIds.length === 0 || unitId === null) {
       return (
         <div style={{ flexBasis: '100%', minWidth: 0, borderBottom: 'solid 1px #EAEAEA' }} />
       );

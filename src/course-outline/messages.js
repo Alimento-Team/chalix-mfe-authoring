@@ -75,6 +75,41 @@ const messages = defineMessages({
     defaultMessage: 'Select section',
     description: 'Section modal picker title text in outline',
   },
+  simplifiedViewTitle: {
+    id: 'course-authoring.course-outline.simplified.title',
+    defaultMessage: 'Simplified Course Structure',
+    description: 'Title for simplified course outline view',
+  },
+  simplifiedViewDescription: {
+    id: 'course-authoring.course-outline.simplified.description',
+    defaultMessage: 'Manage your course units directly without sections and subsections',
+    description: 'Description for simplified course outline view',
+  },
+  switchToNormalView: {
+    id: 'course-authoring.course-outline.simplified.switch-normal',
+    defaultMessage: 'Switch to Traditional View',
+    description: 'Button text to switch from simplified to traditional course outline view',
+  },
+  switchToSimplifiedView: {
+    id: 'course-authoring.course-outline.normal.switch-simplified',
+    defaultMessage: 'Switch to Simplified View',
+    description: 'Button text to switch from traditional to simplified course outline view',
+  },
+  normalViewTitle: {
+    id: 'course-authoring.course-outline.normal.title',
+    defaultMessage: 'Traditional Course Structure',
+    description: 'Title for normal course outline view',
+  },
+  normalViewDescription: {
+    id: 'course-authoring.course-outline.normal.description',
+    defaultMessage: 'Manage your course with sections, subsections, and units',
+    description: 'Description for traditional course outline view',
+  },
+  simplifiedSubtitle: {
+    id: 'course-authoring.course-outline.simplified.subtitle',
+    defaultMessage: 'Simplified Structure: Course → Units',
+    description: 'Subtitle for simplified course outline structure',
+  },
 });
 
 export default messages;

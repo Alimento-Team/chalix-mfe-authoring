@@ -7,9 +7,11 @@ import {
   TransitionReplace,
   Toast,
   StandardModal,
+  Button,
+  Card,
 } from '@openedx/paragon';
 import { Helmet } from 'react-helmet';
-import { CheckCircle as CheckCircleIcon } from '@openedx/paragon/icons';
+import { CheckCircle as CheckCircleIcon, Settings as SettingsIcon } from '@openedx/paragon/icons';
 import { useSelector } from 'react-redux';
 import {
   arrayMove,
@@ -240,6 +242,11 @@ const CourseOutline = ({ courseId }: CourseOutlineProps) => {
     closeAddLibrarySectionModal();
   }, [closeAddLibrarySectionModal, handleAddSectionFromLibrary.mutateAsync, courseId, courseUsageKey]);
 
+  const handleToggleToSimplifiedView = () => {
+    // Navigate to simplified course outline view (now the default)
+    window.location.href = `/course/${courseId}`;
+  };
+
   useEffect(() => {
     setSections(sectionsList);
   }, [sectionsList]);
@@ -308,6 +315,26 @@ const CourseOutline = ({ courseId }: CourseOutlineProps) => {
               />
             ) : null}
           </TransitionReplace>
+          
+          {/* Normal View Header with Toggle */}
+          <Card className="mb-3">
+            <Card.Header>
+              <div className="d-flex justify-content-between align-items-center">
+                <div>
+                  <h3 className="mb-1">{intl.formatMessage(messages.normalViewTitle)}</h3>
+                  <p className="text-muted mb-0">{intl.formatMessage(messages.normalViewDescription)}</p>
+                </div>
+                <Button 
+                  variant="outline-primary"
+                  iconBefore={SettingsIcon}
+                  onClick={handleToggleToSimplifiedView}
+                >
+                  Back to Simplified View
+                </Button>
+              </div>
+            </Card.Header>
+          </Card>
+
           <SubHeader
             title={intl.formatMessage(messages.headingTitle)}
             subtitle={intl.formatMessage(messages.headingSubtitle)}
