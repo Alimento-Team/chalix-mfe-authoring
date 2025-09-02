@@ -110,7 +110,6 @@ const useSimplifiedCourseOutline = ({ courseId }) => {
       } catch (simplifiedError) {
         // Fallback to regular unit creation
         // Create a new unit using the regular API (requires section/subsection structure)
-        console.log('Simplified unit creation not available, using regular method');
         dispatch(addNewUnitQuery(courseStructure.id, openUnitPage));
       }
     } catch (error) {
@@ -192,12 +191,11 @@ const useSimplifiedCourseOutline = ({ courseId }) => {
           }
         } catch (err) {
           // Fallback: extract units from regular sections structure
-          console.log('Simplified API not available, using fallback extraction');
           // The regular course outline data will be available via selectors
           // and we'll extract units in the component
         }
       } catch (error) {
-        console.error('Error loading simplified outline:', error);
+        // Error loading simplified outline
       }
     };
 

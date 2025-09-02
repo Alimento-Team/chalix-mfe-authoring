@@ -1,0 +1,85 @@
+// Chalix content section in AddComponent
+.chalix-content-section {
+    border-top: 1px solid #e0e0e0;
+    border-bottom: 1px solid #e0e0e0;
+    padding: 1.5rem 0;
+    margin: 0 -1rem;
+    background: linear-gradient(135deg, rgba(0, 170, 237, 0.05) 0%, rgba(255, 107, 53, 0.05) 100%);
+
+    h6 {
+        font-weight: 600;
+        letter-spacing: 0.5px;
+        text-transform: uppercase;
+        font-size: 0.75rem;
+        color: #666;
+    }
+}
+
+.chalix-content-type-selector {
+    .chalix-content-card {
+        transition: all 0.2s ease-in-out;
+        border-width: 2px;
+
+        &:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        &:focus {
+            outline: 2px solid var(--pgn-color-primary-base);
+            outline-offset: 2px;
+        }
+    }
+
+    .chalix-icon-container {
+        font-size: 3rem;
+
+        .pgn__icon {
+            width: 3rem;
+            height: 3rem;
+        }
+    }
+}
+
+.question-form {
+    background-color: #f8f9fa;
+
+    .choice-input {
+        .form-control {
+            flex: 1;
+        }
+    }
+}
+
+.quiz-questions-section {
+    .question-form:last-of-type {
+        margin-bottom: 1rem;
+    }
+}
+
+// Chalix content type specific styles
+.chalix-content-card {
+    &[style*="#00AAED"] {
+        &:hover {
+            border-color: #0088cc !important;
+        }
+    }
+
+    &[style*="#358F0A"] {
+        &:hover {
+            border-color: #2d7a08 !important;
+        }
+    }
+
+    &[style*="#28a745"] {
+        &:hover {
+            border-color: #1e7e34 !important;
+        }
+    }
+
+    &[style*="#FF6B35"] {
+        &:hover {
+            border-color: #e55a2b !important;
+        }
+    }
+}

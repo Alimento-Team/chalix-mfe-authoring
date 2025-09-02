@@ -13,6 +13,8 @@ export const getCourseVerticalChildrenApiUrl = (itemId) => `${getStudioBaseUrl()
 export const getCourseOutlineInfoUrl = (courseId) => `${getStudioBaseUrl()}/course/${courseId}?format=concise`;
 export const postXBlockBaseApiUrl = () => `${getStudioBaseUrl()}/xblock/`;
 export const libraryBlockChangesUrl = (blockId) => `${getStudioBaseUrl()}/api/contentstore/v2/downstreams/${blockId}/sync`;
+export const chalixContentTypesApiUrl = (courseId) => `${getStudioBaseUrl()}/api/chalix/content-types/${courseId}/`;
+export const chalixUnitsApiUrl = (courseId) => `${getStudioBaseUrl()}/api/chalix/units/create/${courseId}/`;
 
 /**
  * Edit course unit display name.
@@ -215,4 +217,33 @@ export async function acceptLibraryBlockChanges(blockId) {
 export async function ignoreLibraryBlockChanges(blockId) {
   await getAuthenticatedHttpClient()
     .delete(libraryBlockChangesUrl(blockId));
+}
+
+/**
+ * Get available Chalix content types for course unit creation.
+ * @param {string} courseId - The course ID.
+ * @returns {Promise<Object>} - The available Chalix content types.
+ */
+export async function getChalixContentTypes(courseId) {
+  const { data } = await getAuthenticatedHttpClient()
+    .get(chalixContentTypesApiUrl(courseId));
+
+  return camelCaseObject(data);
+}
+
+/**
+ * Create a new unit with Chalix content types.
+ * @param {string} courseId - The course ID.
+ * @param {Object} unitData - The unit creation data.
+ * @param {string} unitData.parentLocator - The parent locator.
+ * @param {string} unitData.contentType - The Chalix content type.
+ * @param {string} unitData.displayName - The unit display name.
+ * @param {Object} unitData.contentData - Content-specific data.
+ * @returns {Promise<Object>} - The created unit data.
+ */
+export async function createChalixUnit(courseId, unitData) {
+  const { data } = await getAuthenticatedHttpClient()
+    .post(chalixUnitsApiUrl(courseId), unitData);
+
+  return camelCaseObject(data);
 }

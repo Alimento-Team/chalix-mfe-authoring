@@ -7,11 +7,13 @@ import {
   ActionRow, Button, StandardModal, useToggle,
 } from '@openedx/paragon';
 
-import { getCourseSectionVertical, getCourseUnitData } from '../data/selectors';
+import { getCourseSectionVertical, getCourseUnitData, getCourseId } from '../data/selectors';
 import { useWaffleFlags } from '../../data/apiHooks';
 import { COMPONENT_TYPES } from '../../generic/block-type-utils/constants';
 import ComponentModalView from './add-component-modals/ComponentModalView';
 import AddComponentButton from './add-component-btn';
+import ChalixContentModal from './chalix-content-modal';
+import './chalix-content-modal/ChalixContentModal.scss';
 import messages from './messages';
 import { ComponentPicker } from '../../library-authoring/component-picker';
 import { ContentType } from '../../library-authoring/routes';
@@ -21,6 +23,7 @@ import { useEventListener } from '../../generic/hooks';
 import VideoSelectorPage from '../../editors/VideoSelectorPage';
 import EditorPage from '../../editors/EditorPage';
 import { fetchCourseSectionVerticalData } from '../data/thunk';
+import { createChalixUnit } from '../data/api';
 
 const AddComponent = ({
   parentLocator,
@@ -35,6 +38,8 @@ const AddComponent = ({
   const [isOpenAdvanced, openAdvanced, closeAdvanced] = useToggle(false);
   const [isOpenHtml, openHtml, closeHtml] = useToggle(false);
   const [isOpenOpenAssessment, openOpenAssessment, closeOpenAssessment] = useToggle(false);
+  const [isChalixModalOpen, openChalixModal, closeChalixModal] = useToggle(false);
+  const [chalixSelectedType, setChalixSelectedType] = useState(null);
   const { componentTemplates = {} } = useSelector(getCourseSectionVertical);
   const blockId = addComponentTemplateData.parentLocator || parentLocator;
   const [isAddLibraryContentModalOpen, showAddLibraryContentModal, closeAddLibraryContentModal] = useToggle();
@@ -52,6 +57,7 @@ const AddComponent = ({
 
   const courseUnit = useSelector(getCourseUnitData);
   const sequenceId = courseUnit?.ancestorInfo?.ancestors?.[0]?.id;
+  const currentCourseId = useSelector(getCourseId);
 
   const receiveMessage = useCallback(({ data: { type, payload } }) => {
     if (type === messageTypes.showMultipleComponentPicker) {
@@ -93,6 +99,51 @@ const AddComponent = ({
     });
     closeAddLibraryContentModal();
   }, [usageId]);
+
+  const handleChalixModalClose = useCallback(() => {
+    setChalixSelectedType(null);
+    closeChalixModal();
+  }, [closeChalixModal]);
+
+  const handleChalixContentCreation = useCallback(async (contentType, contentData) => {
+    try {
+      // WORKAROUND: Use standard XBlock creation API since custom Chalix API isn't deployed yet
+      // Create a vertical (unit) with the title
+      const unitDisplayName = `${contentData.title} (Lớp Học Trực Tuyến)`;
+      
+      handleCreateNewCourseXBlock({
+        type: 'vertical',
+        parentLocator: blockId,
+        displayName: unitDisplayName,
+      }, async (unitResult) => {
+        if (unitResult.locator && contentType === COMPONENT_TYPES.onlineClass) {
+          // Create an HTML block with online class content
+          setTimeout(() => {
+            handleCreateNewCourseXBlock({
+              type: 'html',
+              parentLocator: unitResult.locator,
+              displayName: 'Online Class Info',
+              boilerplate: 'raw',
+            }, (htmlResult) => {
+              // The teacher will need to edit the HTML block to add the meeting URL
+              // But the structure is now created
+            });
+          }, 500);
+        }
+        
+        // Refresh the page after creation
+        setTimeout(() => {
+          dispatch(fetchCourseSectionVerticalData(blockId, sequenceId));
+        }, 1500);
+      });
+
+      setChalixSelectedType(null);
+      closeChalixModal();
+      
+    } catch (error) {
+      alert(`Error creating content: ${error.message}`);
+    }
+  }, [blockId, sequenceId, dispatch, closeChalixModal, handleCreateNewCourseXBlock]);
 
   const handleCreateNewXBlock = (type, moduleName) => {
     switch (type) {
@@ -140,6 +191,14 @@ const AddComponent = ({
       case COMPONENT_TYPES.openassessment:
         handleCreateNewCourseXBlock({ boilerplate: moduleName, category: type, parentLocator: blockId });
         break;
+      // Chalix content types - open the modal with pre-selected type
+      case COMPONENT_TYPES.onlineClass:
+      case COMPONENT_TYPES.unitVideo:
+      case COMPONENT_TYPES.slide:
+      case COMPONENT_TYPES.quiz:
+        setChalixSelectedType(type);
+        openChalixModal();
+        break;
       case COMPONENT_TYPES.html:
         handleCreateNewCourseXBlock({
           type,
@@ -162,59 +221,41 @@ const AddComponent = ({
         {Object.keys(componentTemplates).length && isUnitVerticalType ? (
           <>
             <h5 className="h3 mb-4 text-center">{intl.formatMessage(messages.title)}</h5>
+            
+            {/* Direct Chalix Content Type Buttons */}
             <ul className="new-component-type list-unstyled m-0 d-flex flex-wrap justify-content-center">
-              {componentTemplates.map((component) => {
-                const { type, displayName, beta } = component;
-                let modalParams;
-
-                if (!component.templates.length) {
-                  return null;
-                }
-
-                switch (type) {
-                  case COMPONENT_TYPES.advanced:
-                    modalParams = {
-                      open: openAdvanced,
-                      close: closeAdvanced,
-                      isOpen: isOpenAdvanced,
-                    };
-                    break;
-                  case COMPONENT_TYPES.html:
-                    modalParams = {
-                      open: openHtml,
-                      close: closeHtml,
-                      isOpen: isOpenHtml,
-                    };
-                    break;
-                  case COMPONENT_TYPES.openassessment:
-                    modalParams = {
-                      open: openOpenAssessment,
-                      close: closeOpenAssessment,
-                      isOpen: isOpenOpenAssessment,
-                    };
-                    break;
-                  default:
-                    return (
-                      <li key={type}>
-                        <AddComponentButton
-                          onClick={() => handleCreateNewXBlock(type)}
-                          displayName={displayName}
-                          type={type}
-                          beta={beta}
-                        />
-                      </li>
-                    );
-                }
-
-                return (
-                  <ComponentModalView
-                    key={type}
-                    component={component}
-                    handleCreateNewXBlock={handleCreateNewXBlock}
-                    modalParams={modalParams}
-                  />
-                );
-              })}
+              <li className="new-component-item d-flex">
+                <AddComponentButton
+                  onClick={() => handleCreateNewXBlock(COMPONENT_TYPES.onlineClass)}
+                  displayName="Lớp Học Trực Tuyến"
+                  type={COMPONENT_TYPES.onlineClass}
+                  icon="fa fa-video-camera"
+                />
+              </li>
+              <li className="new-component-item d-flex">
+                <AddComponentButton
+                  onClick={() => handleCreateNewXBlock(COMPONENT_TYPES.unitVideo)}
+                  displayName="Video Bài Học"
+                  type={COMPONENT_TYPES.unitVideo}
+                  icon="fa fa-play-circle"
+                />
+              </li>
+              <li className="new-component-item d-flex">
+                <AddComponentButton
+                  onClick={() => handleCreateNewXBlock(COMPONENT_TYPES.slide)}
+                  displayName="Slide Bài Học"
+                  type={COMPONENT_TYPES.slide}
+                  icon="fa fa-file-powerpoint-o"
+                />
+              </li>
+              <li className="new-component-item d-flex">
+                <AddComponentButton
+                  onClick={() => handleCreateNewXBlock(COMPONENT_TYPES.quiz)}
+                  displayName="Bài Kiểm Tra"
+                  type={COMPONENT_TYPES.quiz}
+                  icon="fa fa-question-circle"
+                />
+              </li>
             </ul>
           </>
         ) : null}
@@ -268,6 +309,13 @@ const AddComponent = ({
             />
           </div>
         </StandardModal>
+        <ChalixContentModal
+          isOpen={isChalixModalOpen}
+          onClose={handleChalixModalClose}
+          onCreateContent={handleChalixContentCreation}
+          parentLocator={blockId}
+          initialSelectedType={chalixSelectedType}
+        />
         {isXBlockEditorModalOpen && (
           <div className="editor-page">
             <EditorPage

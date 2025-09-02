@@ -6,7 +6,10 @@
   }
 
   .btn-icon {
-    &:hover, &:active, &:focus {
+
+    &:hover,
+    &:active,
+    &:focus {
       background-color: darken(#005C9E, 15%);
     }
   }
@@ -15,7 +18,9 @@
     background-color: lighten(#005C9E, 10%);
     border: 0;
 
-    &:hover, &:active, &:focus {
+    &:hover,
+    &:active,
+    &:focus {
       background-color: lighten(#005C9E, 20%);
       border: 1px solid var(--pgn-color-primary-base);
       margin: -1px;
@@ -31,7 +36,10 @@
   }
 
   .btn-icon {
-    &:hover, &:active, &:focus {
+
+    &:hover,
+    &:active,
+    &:focus {
       background-color: darken(#9747FF, 15%);
     }
   }
@@ -40,7 +48,9 @@
     background-color: lighten(#9747FF, 10%);
     border: 0;
 
-    &:hover, &:active, &:focus {
+    &:hover,
+    &:active,
+    &:focus {
       background-color: lighten(#9747FF, 20%);
       border: 1px solid var(--pgn-color-primary-base);
       margin: -1px;
@@ -56,7 +66,10 @@
   }
 
   .btn-icon {
-    &:hover, &:active, &:focus {
+
+    &:hover,
+    &:active,
+    &:focus {
       background-color: darken(#FFCD29, 15%);
     }
   }
@@ -65,7 +78,9 @@
     background-color: lighten(#FFCD29, 10%);
     border: 0;
 
-    &:hover, &:active, &:focus {
+    &:hover,
+    &:active,
+    &:focus {
       background-color: lighten(#FFCD29, 20%);
       border: 1px solid var(--pgn-color-primary-base);
       margin: -1px;
@@ -81,7 +96,10 @@
   }
 
   .btn-icon {
-    &:hover, &:active, &:focus {
+
+    &:hover,
+    &:active,
+    &:focus {
       background-color: darken(#358F0A, 15%);
     }
   }
@@ -90,7 +108,9 @@
     background-color: lighten(#358F0A, 10%);
     border: 0;
 
-    &:hover, &:active, &:focus {
+    &:hover,
+    &:active,
+    &:focus {
       background-color: lighten(#358F0A, 20%);
       border: 1px solid var(--pgn-color-primary-base);
       margin: -1px;
@@ -106,7 +126,10 @@
   }
 
   .btn-icon {
-    &:hover, &:active, &:focus {
+
+    &:hover,
+    &:active,
+    &:focus {
       background-color: darken(#0B8E77, 15%);
     }
   }
@@ -115,7 +138,9 @@
     background-color: lighten(#0B8E77, 10%);
     border: 0;
 
-    &:hover, &:active, &:focus {
+    &:hover,
+    &:active,
+    &:focus {
       background-color: lighten(#0B8E77, 20%);
       border: 1px solid var(--pgn-color-primary-base);
       margin: -1px;
@@ -131,7 +156,10 @@
   }
 
   .btn-icon {
-    &:hover, &:active, &:focus {
+
+    &:hover,
+    &:active,
+    &:focus {
       background-color: darken(#EA3E3E, 15%);
     }
   }
@@ -140,7 +168,9 @@
     background-color: lighten(#EA3E3E, 10%);
     border: 0;
 
-    &:hover, &:active, &:focus {
+    &:hover,
+    &:active,
+    &:focus {
       background-color: lighten(#EA3E3E, 20%);
       border: 1px solid var(--pgn-color-primary-base);
       margin: -1px;
@@ -156,7 +186,10 @@
   }
 
   .btn-icon {
-    &:hover, &:active, &:focus {
+
+    &:hover,
+    &:active,
+    &:focus {
       background-color: darken(#45009E, 15%);
     }
   }
@@ -166,7 +199,9 @@
     border: 0;
     color: white;
 
-    &:hover, &:active, &:focus {
+    &:hover,
+    &:active,
+    &:focus {
       background-color: lighten(#45009E, 20%);
       border: 1px solid var(--pgn-color-primary-base);
       margin: -1px;
@@ -182,7 +217,10 @@
   }
 
   .btn-icon {
-    &:hover, &:active, &:focus {
+
+    &:hover,
+    &:active,
+    &:focus {
       background-color: darken(#646464, 15%);
     }
   }
@@ -191,8 +229,131 @@
     background-color: lighten(#646464, 10%);
     border: 0;
 
-    &:hover, &:active, &:focus {
+    &:hover,
+    &:active,
+    &:focus {
       background-color: lighten(#646464, 20%);
+      border: 1px solid var(--pgn-color-primary-base);
+      margin: -1px;
+    }
+  }
+}
+
+// Chalix custom content type styles
+.component-style-chalix {
+  background: linear-gradient(135deg, #00AAED 0%, #FF6B35 100%);
+
+  .pgn__icon:not(.btn-icon-before) {
+    color: white;
+  }
+
+  .btn-icon {
+
+    &:hover,
+    &:active,
+    &:focus {
+      background: linear-gradient(135deg, darken(#00AAED, 15%) 0%, darken(#FF6B35, 15%) 100%);
+    }
+  }
+
+  .btn {
+    background: linear-gradient(135deg, lighten(#00AAED, 10%) 0%, lighten(#FF6B35, 10%) 100%);
+    border: 0;
+
+    &:hover,
+    &:active,
+    &:focus {
+      background: linear-gradient(135deg, lighten(#00AAED, 20%) 0%, lighten(#FF6B35, 20%) 100%);
+      border: 1px solid var(--pgn-color-primary-base);
+      margin: -1px;
+    }
+  }
+}
+
+.component-style-chalix-online {
+  background-color: #00AAED;
+
+  .pgn__icon:not(.btn-icon-before) {
+    color: white;
+  }
+
+  .btn-icon {
+
+    &:hover,
+    &:active,
+    &:focus {
+      background-color: darken(#00AAED, 15%);
+    }
+  }
+
+  .btn {
+    background-color: lighten(#00AAED, 10%);
+    border: 0;
+
+    &:hover,
+    &:active,
+    &:focus {
+      background-color: lighten(#00AAED, 20%);
+      border: 1px solid var(--pgn-color-primary-base);
+      margin: -1px;
+    }
+  }
+}
+
+.component-style-chalix-slide {
+  background-color: #28a745;
+
+  .pgn__icon:not(.btn-icon-before) {
+    color: white;
+  }
+
+  .btn-icon {
+
+    &:hover,
+    &:active,
+    &:focus {
+      background-color: darken(#28a745, 15%);
+    }
+  }
+
+  .btn {
+    background-color: lighten(#28a745, 10%);
+    border: 0;
+
+    &:hover,
+    &:active,
+    &:focus {
+      background-color: lighten(#28a745, 20%);
+      border: 1px solid var(--pgn-color-primary-base);
+      margin: -1px;
+    }
+  }
+}
+
+.component-style-chalix-quiz {
+  background-color: #FF6B35;
+
+  .pgn__icon:not(.btn-icon-before) {
+    color: white;
+  }
+
+  .btn-icon {
+
+    &:hover,
+    &:active,
+    &:focus {
+      background-color: darken(#FF6B35, 15%);
+    }
+  }
+
+  .btn {
+    background-color: lighten(#FF6B35, 10%);
+    border: 0;
+
+    &:hover,
+    &:active,
+    &:focus {
+      background-color: lighten(#FF6B35, 20%);
       border: 1px solid var(--pgn-color-primary-base);
       margin: -1px;
     }

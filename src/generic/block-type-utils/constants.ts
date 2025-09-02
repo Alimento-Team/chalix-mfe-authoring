@@ -18,6 +18,12 @@ import {
   ViewDay,
   Widgets,
   WidthWide,
+  // Chalix content type icons
+  VideoCall as OnlineClassIcon,
+  PlayCircle as UnitVideoIcon,
+  LibraryBooks as SlideIcon,
+  Assignment as QuizIcon,
+  Apps as ChalixIcon,
 } from '@openedx/paragon/icons';
 import NewsstandIcon from '../NewsstandIcon';
 
@@ -34,6 +40,12 @@ export const COMPONENT_TYPES = {
   problem: 'problem',
   video: 'video',
   dragAndDrop: 'drag-and-drop-v2',
+  // Chalix custom content types
+  chalix: 'chalix',
+  onlineClass: 'online_class',
+  unitVideo: 'unit_video',
+  slide: 'slide',
+  quiz: 'quiz',
 };
 
 export const UNIT_TYPE_ICONS_MAP: Record<string, React.ComponentType> = {
@@ -58,6 +70,12 @@ export const COMPONENT_TYPE_ICON_MAP: Record<string, React.ComponentType> = {
   [COMPONENT_TYPES.problem]: HelpOutlineIcon,
   [COMPONENT_TYPES.video]: VideoCameraIcon,
   [COMPONENT_TYPES.dragAndDrop]: BackHandIcon,
+  // Chalix content types
+  [COMPONENT_TYPES.chalix]: ChalixIcon,
+  [COMPONENT_TYPES.onlineClass]: OnlineClassIcon,
+  [COMPONENT_TYPES.unitVideo]: UnitVideoIcon,
+  [COMPONENT_TYPES.slide]: SlideIcon,
+  [COMPONENT_TYPES.quiz]: QuizIcon,
 };
 
 export const STRUCTURAL_TYPE_ICONS: Record<string, React.ComponentType> = {
@@ -82,6 +100,12 @@ export const COMPONENT_TYPE_STYLE_COLOR_MAP = {
   [COMPONENT_TYPES.problem]: 'component-style-default',
   [COMPONENT_TYPES.video]: 'component-style-video',
   [COMPONENT_TYPES.dragAndDrop]: 'component-style-default',
+  // Chalix content types
+  [COMPONENT_TYPES.chalix]: 'component-style-chalix',
+  [COMPONENT_TYPES.onlineClass]: 'component-style-chalix-online',
+  [COMPONENT_TYPES.unitVideo]: 'component-style-video',
+  [COMPONENT_TYPES.slide]: 'component-style-chalix-slide',
+  [COMPONENT_TYPES.quiz]: 'component-style-chalix-quiz',
   vertical: 'component-style-vertical',
   unit: 'component-style-vertical',
   sequential: 'component-style-sequential',
