@@ -421,7 +421,7 @@ describe('<AddContent />', () => {
     renderWithContainer(subsectionId, 'subsection');
 
     expect(await screen.findByRole('button', { name: /existing unit/i })).toBeInTheDocument();
-    // Button is labeled "New Unit" in this context, not just "Unit"
+    // Button is labeled "Tạo Chuyên Đề" in this context, not just "Unit"
     expect(await screen.findByRole('button', { name: /new unit/i })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Unit' })).not.toBeInTheDocument();
 

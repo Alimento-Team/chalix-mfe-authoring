@@ -3,7 +3,7 @@ import { defineMessages } from '@edx/frontend-platform/i18n';
 const messages = defineMessages({
   createUnitModalTitle: {
     id: 'course-authoring.library-authoring.modals.create-unit.title',
-    defaultMessage: 'New Unit',
+    defaultMessage: 'Tạo Chuyên Đề',
     description: 'Title of the Create Unit modal',
   },
   createSubsectionModalTitle: {

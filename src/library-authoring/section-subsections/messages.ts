@@ -54,7 +54,7 @@ export const subsectionMessages = defineMessages({
   },
   addContentButton: {
     id: 'course-authoring.library-authoring.subsection-header.buttons.add-subsection',
-    defaultMessage: 'Add New Unit',
+    defaultMessage: 'Add Tạo Chuyên Đề',
     description: 'Text of button to add subsection to subsection',
   },
   addExistingContentButton: {

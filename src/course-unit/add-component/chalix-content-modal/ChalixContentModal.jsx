@@ -4,12 +4,6 @@ import PropTypes from 'prop-types';
 import { COMPONENT_TYPES } from '../../../generic/block-type-utils/constants';
 
 const CHALIX_CONTENT_TYPES = {
-  [COMPONENT_TYPES.onlineClass]: {
-    displayName: 'Lớp Học Trực Tuyến',
-    description: 'Buổi học trực tuyến với liên kết cuộc họp',
-    icon: '📹',
-    color: '#00AAED',
-  },
   [COMPONENT_TYPES.unitVideo]: {
     displayName: 'Video Bài Học',
     description: 'Video bài giảng đã ghi sẵn',

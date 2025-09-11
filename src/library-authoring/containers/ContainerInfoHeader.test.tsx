@@ -82,13 +82,13 @@ describe('<ContainerInfoHeader />', () => {
     const textBox = screen.getByRole('textbox', { name: /text input/i });
 
     await user.clear(textBox);
-    await user.type(textBox, 'New Unit Title{enter}');
+    await user.type(textBox, 'Tạo Chuyên Đề Title{enter}');
     await user.keyboard('{Enter}');
 
     await waitFor(() => {
       expect(axiosMock.history.patch[0].url).toEqual(url);
     });
-    expect(axiosMock.history.patch[0].data).toEqual(JSON.stringify({ display_name: 'New Unit Title' }));
+    expect(axiosMock.history.patch[0].data).toEqual(JSON.stringify({ display_name: 'Tạo Chuyên Đề Title' }));
 
     expect(textBox).not.toBeInTheDocument();
     expect(mockShowToast).toHaveBeenCalledWith('Container updated successfully.');
@@ -148,7 +148,7 @@ describe('<ContainerInfoHeader />', () => {
     const textBox = screen.getByRole('textbox', { name: /text input/i });
 
     await user.clear(textBox);
-    await user.type(textBox, 'New Unit Title');
+    await user.type(textBox, 'Tạo Chuyên Đề Title');
     await user.keyboard('{Escape}');
 
     await waitFor(() => expect(axiosMock.history.patch.length).toEqual(0));
@@ -169,13 +169,13 @@ describe('<ContainerInfoHeader />', () => {
     const textBox = screen.getByRole('textbox', { name: /text input/i });
 
     await user.clear(textBox);
-    await user.type(textBox, 'New Unit Title{enter}');
+    await user.type(textBox, 'Tạo Chuyên Đề Title{enter}');
     await user.keyboard('{Enter}');
 
     await waitFor(() => {
       expect(axiosMock.history.patch[0].url).toEqual(url);
     });
-    expect(axiosMock.history.patch[0].data).toEqual(JSON.stringify({ display_name: 'New Unit Title' }));
+    expect(axiosMock.history.patch[0].data).toEqual(JSON.stringify({ display_name: 'Tạo Chuyên Đề Title' }));
 
     expect(textBox).not.toBeInTheDocument();
     expect(mockShowToast).toHaveBeenCalledWith('Failed to update container.');

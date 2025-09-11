@@ -99,7 +99,7 @@ const useSimplifiedCourseOutline = ({ courseId }) => {
     try {
       // Try to use simplified API first
       try {
-        const response = await addNewSimplifiedUnit(courseStructure.id, 'New Unit');
+        const response = await addNewSimplifiedUnit(courseStructure.id, 'Tạo Chuyên Đề');
         // Refresh the units list
         const updatedOutline = await getSimplifiedCourseOutlineIndex(courseId);
         setUnits(updatedOutline.units || []);

@@ -117,16 +117,42 @@ const AddComponent = ({
         displayName: unitDisplayName,
       }, async (unitResult) => {
         if (unitResult.locator && contentType === COMPONENT_TYPES.onlineClass) {
-          // Create an HTML block with online class content
+          // Create an HTML block with online class content including the meeting URL
           setTimeout(() => {
+            // Generate HTML content with the meeting URL
+            const htmlContent = `
+              <div style="background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 8px; padding: 20px; margin: 10px 0;">
+                <h3 style="color: #00AAED; margin-top: 0;">📹 ${contentData.title}</h3>
+                <p style="margin: 10px 0;"><strong>Loại:</strong> Lớp Học Trực Tuyến</p>
+                ${contentData.meetingUrl ? `
+                  <p style="margin: 10px 0;"><strong>Liên kết cuộc họp:</strong></p>
+                  <a href="${contentData.meetingUrl}" target="_blank" rel="noopener noreferrer" 
+                     style="display: inline-block; background: #007bff; color: white; padding: 10px 20px; 
+                            text-decoration: none; border-radius: 5px; margin: 5px 0;">
+                    🔗 Tham gia lớp học trực tuyến
+                  </a>
+                  <p style="margin: 5px 0; font-size: 12px; color: #666;">
+                    URL: ${contentData.meetingUrl}
+                  </p>
+                ` : `
+                  <p style="color: #dc3545; font-style: italic;">Chưa có URL cuộc họp</p>
+                `}
+                <hr style="margin: 15px 0;">
+                <p style="font-size: 12px; color: #666; margin-bottom: 0;">
+                  Để chỉnh sửa thông tin này, nhấn vào nút "Edit" ở trên.
+                </p>
+              </div>
+            `;
+            
             handleCreateNewCourseXBlock({
               type: 'html',
               parentLocator: unitResult.locator,
               displayName: 'Online Class Info',
               boilerplate: 'raw',
+              data: htmlContent,
             }, (htmlResult) => {
-              // The teacher will need to edit the HTML block to add the meeting URL
-              // But the structure is now created
+              // Content created successfully with meeting URL
+              console.log('Online class created with meeting URL:', contentData.meetingUrl);
             });
           }, 500);
         }
@@ -224,14 +250,6 @@ const AddComponent = ({
             
             {/* Direct Chalix Content Type Buttons */}
             <ul className="new-component-type list-unstyled m-0 d-flex flex-wrap justify-content-center">
-              <li className="new-component-item d-flex">
-                <AddComponentButton
-                  onClick={() => handleCreateNewXBlock(COMPONENT_TYPES.onlineClass)}
-                  displayName="Lớp Học Trực Tuyến"
-                  type={COMPONENT_TYPES.onlineClass}
-                  icon="fa fa-video-camera"
-                />
-              </li>
               <li className="new-component-item d-flex">
                 <AddComponentButton
                   onClick={() => handleCreateNewXBlock(COMPONENT_TYPES.unitVideo)}

@@ -145,13 +145,13 @@ describe('<LibraryUnitPage />', () => {
 
     const textBox = screen.getByRole('textbox', { name: /text input/i });
     expect(textBox).toBeInTheDocument();
-    fireEvent.change(textBox, { target: { value: 'New Unit Title' } });
+    fireEvent.change(textBox, { target: { value: 'Tạo Chuyên Đề Title' } });
     fireEvent.keyDown(textBox, { key: 'Enter', code: 'Enter', charCode: 13 });
 
     await waitFor(() => {
       expect(axiosMock.history.patch[0].url).toEqual(url);
     });
-    expect(axiosMock.history.patch[0].data).toEqual(JSON.stringify({ display_name: 'New Unit Title' }));
+    expect(axiosMock.history.patch[0].data).toEqual(JSON.stringify({ display_name: 'Tạo Chuyên Đề Title' }));
 
     expect(textBox).not.toBeInTheDocument();
     expect(mockShowToast).toHaveBeenCalledWith('Container updated successfully.');
@@ -178,13 +178,13 @@ describe('<LibraryUnitPage />', () => {
     expect(textBox).toBeInTheDocument();
     expect(textBox).toHaveValue('Test Unit');
     screen.logTestingPlaygroundURL();
-    fireEvent.change(textBox, { target: { value: 'New Unit Title' } });
+    fireEvent.change(textBox, { target: { value: 'Tạo Chuyên Đề Title' } });
     fireEvent.keyDown(textBox, { key: 'Enter', code: 'Enter', charCode: 13 });
 
     await waitFor(() => {
       expect(axiosMock.history.patch[0].url).toEqual(url);
     });
-    expect(axiosMock.history.patch[0].data).toEqual(JSON.stringify({ display_name: 'New Unit Title' }));
+    expect(axiosMock.history.patch[0].data).toEqual(JSON.stringify({ display_name: 'Tạo Chuyên Đề Title' }));
 
     expect(textBox).not.toBeInTheDocument();
     expect(mockShowToast).toHaveBeenCalledWith('Failed to update container.');

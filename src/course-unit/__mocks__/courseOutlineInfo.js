@@ -829,7 +829,7 @@ module.exports = {
                   },
                   {
                     id: 'block-v1:edX+DemoX+Demo_Course+type@vertical+block@4e592689563243c484af947465eaef0d',
-                    display_name: 'New Unit',
+                    display_name: 'Tạo Chuyên Đề',
                     category: 'vertical',
                     has_children: true,
                     video_sharing_enabled: true,

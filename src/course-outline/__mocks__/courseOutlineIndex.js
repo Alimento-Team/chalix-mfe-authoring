@@ -955,7 +955,7 @@ module.exports = {
                     },
                     {
                       id: 'block-v1:edX+DemoX+Demo_Course+type@vertical+block@4e592689563243c484af947465eaef0d',
-                      displayName: 'New Unit',
+                      displayName: 'Tạo Chuyên Đề',
                       category: 'vertical',
                       hasChildren: true,
                       editedOn: 'Jul 07, 2023 at 11:14 UTC',

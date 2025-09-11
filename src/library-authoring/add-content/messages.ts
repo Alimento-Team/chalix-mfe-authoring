@@ -155,7 +155,7 @@ export const unitMessages = defineMessages({
 export const subsectionMessages = defineMessages({
   unitButton: {
     id: 'course-authoring.library-authoring.add-content.buttons.new-unit',
-    defaultMessage: 'New Unit',
+    defaultMessage: 'Tạo Chuyên Đề',
     description: 'Content of button to create a new Unit in a Subsection.',
   },
   libraryContentButton: {
