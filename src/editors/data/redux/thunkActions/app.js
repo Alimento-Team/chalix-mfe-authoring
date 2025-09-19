@@ -60,8 +60,16 @@ export const fetchImages = ({ pageNumber }) => (dispatch) => {
 };
 
 export const fetchVideos = () => (dispatch) => {
-  dispatch(requests.fetchVideos({
-    onSuccess: (response) => dispatch(actions.app.setVideos(response.data.videos)),
+  return dispatch(requests.fetchVideos({
+    onSuccess: (response) => {
+      // Convert array of videos to object with video IDs as keys
+      const videosArray = response.data.previous_uploads || [];
+      const videosObject = videosArray.reduce((acc, video) => ({
+        ...acc,
+        [video.edx_video_id]: video
+      }), {});
+      dispatch(actions.app.setVideos(videosObject));
+    },
     onFailure: (error) => dispatch(actions.requests.failRequest({
       requestKey: RequestKeys.fetchVideos,
       error,

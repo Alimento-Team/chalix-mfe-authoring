@@ -344,7 +344,8 @@ export function addVideoFile(
     }));
 
     try {
-      const { videos } = await fetchVideoList(courseId);
+      const response = await fetchVideoList(courseId);
+      const videos = response.previousUploads || []; // Use previousUploads field
       const newVideos = videos.filter(
         (video) => !videoIds.includes(video.edxVideoId),
       );

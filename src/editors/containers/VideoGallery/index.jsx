@@ -5,8 +5,8 @@ import {
   Image, useToggle, StandardModal,
 } from '@openedx/paragon';
 import { useSearchParams } from 'react-router-dom';
-import { useSelector } from 'react-redux';
-import { selectors } from '../../data/redux';
+import { useSelector, useDispatch } from 'react-redux';
+import { selectors, thunkActions } from '../../data/redux';
 import * as hooks from './hooks';
 import SelectionModal from '../../sharedComponents/SelectionModal';
 import { acceptedImgKeys } from './utils';
@@ -40,11 +40,15 @@ const VideoGallery = ({ returnFunction, onCancel }) => {
     }
   }, [isLoaded]);
 
-  const onVideoUpload = useCallback((videoUrl) => {
-    closeVideoUploadModal();
-    showVideoEditorModal();
-    setSearchParams({ selectedVideoUrl: videoUrl });
-  }, [closeVideoUploadModal, showVideoEditorModal, setSearchParams]);
+  const dispatch = useDispatch();
+  const onVideoUpload = useCallback((edxVideoId) => {
+    // After upload, reload videos to ensure UI updates, then open video editor
+    dispatch(thunkActions.app.fetchVideos()).then(() => {
+      closeVideoUploadModal();
+      showVideoEditorModal();
+      setSearchParams({ selectedVideoId: edxVideoId });
+    });
+  }, [dispatch, closeVideoUploadModal, showVideoEditorModal, setSearchParams]);
 
   const uploadHandler = useCallback(() => {
     showVideoUploadModal();
