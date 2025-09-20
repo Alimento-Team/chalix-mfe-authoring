@@ -28,22 +28,16 @@ const ChalixContentForm = ({ contentType, onSubmit, onCancel }) => {
   }, [errors]);
 
   const handleQuestionChange = useCallback((questionIndex, field, value) => {
-    setQuestions(prev => prev.map((q, idx) => 
-      idx === questionIndex ? { ...q, [field]: value } : q
-    ));
+    setQuestions(prev => prev.map((q, idx) => (idx === questionIndex ? { ...q, [field]: value } : q)));
   }, []);
 
   const handleChoiceChange = useCallback((questionIndex, choiceIndex, field, value) => {
-    setQuestions(prev => prev.map((q, qIdx) => 
-      qIdx === questionIndex 
-        ? {
-            ...q,
-            choices: q.choices.map((c, cIdx) => 
-              cIdx === choiceIndex ? { ...c, [field]: value } : c
-            )
-          }
-        : q
-    ));
+    setQuestions(prev => prev.map((q, qIdx) => (qIdx === questionIndex
+      ? {
+        ...q,
+        choices: q.choices.map((c, cIdx) => (cIdx === choiceIndex ? { ...c, [field]: value } : c)),
+      }
+      : q)));
   }, []);
 
   const addQuestion = useCallback(() => {
@@ -55,19 +49,15 @@ const ChalixContentForm = ({ contentType, onSubmit, onCancel }) => {
   }, []);
 
   const addChoice = useCallback((questionIndex) => {
-    setQuestions(prev => prev.map((q, idx) => 
-      idx === questionIndex 
-        ? { ...q, choices: [...q.choices, { text: '', correct: false }] }
-        : q
-    ));
+    setQuestions(prev => prev.map((q, idx) => (idx === questionIndex
+      ? { ...q, choices: [...q.choices, { text: '', correct: false }] }
+      : q)));
   }, []);
 
   const removeChoice = useCallback((questionIndex, choiceIndex) => {
-    setQuestions(prev => prev.map((q, qIdx) => 
-      qIdx === questionIndex 
-        ? { ...q, choices: q.choices.filter((_, cIdx) => cIdx !== choiceIndex) }
-        : q
-    ));
+    setQuestions(prev => prev.map((q, qIdx) => (qIdx === questionIndex
+      ? { ...q, choices: q.choices.filter((_, cIdx) => cIdx !== choiceIndex) }
+      : q)));
   }, []);
 
   const validateForm = useCallback(() => {
@@ -127,7 +117,7 @@ const ChalixContentForm = ({ contentType, onSubmit, onCancel }) => {
 
   const handleSubmit = useCallback((e) => {
     e.preventDefault();
-    
+
     if (!validateForm()) {
       return;
     }
@@ -227,7 +217,7 @@ const ChalixContentForm = ({ contentType, onSubmit, onCancel }) => {
       <Alert variant="info" className="mb-3">
         <FormattedMessage {...messages.videoSourceInfo} />
       </Alert>
-      
+
       <Form.Group>
         <Form.Label>
           <FormattedMessage {...messages.videoUrlLabel} />
@@ -371,17 +361,15 @@ const ChalixContentForm = ({ contentType, onSubmit, onCancel }) => {
                     name={`correct_${qIdx}`}
                     checked={choice.correct}
                     onChange={() => {
-                      setQuestions(prev => prev.map((q, qIndex) => 
-                        qIndex === qIdx 
-                          ? {
-                              ...q,
-                              choices: q.choices.map((c, cIndex) => ({
-                                ...c,
-                                correct: cIndex === cIdx
-                              }))
-                            }
-                          : q
-                      ));
+                      setQuestions(prev => prev.map((q, qIndex) => (qIndex === qIdx
+                        ? {
+                          ...q,
+                          choices: q.choices.map((c, cIndex) => ({
+                            ...c,
+                            correct: cIndex === cIdx,
+                          })),
+                        }
+                        : q)));
                     }}
                     className="me-2"
                   />
@@ -403,7 +391,7 @@ const ChalixContentForm = ({ contentType, onSubmit, onCancel }) => {
                   )}
                 </div>
               ))}
-              
+
               <Button
                 variant="outline-primary"
                 size="sm"

@@ -270,7 +270,7 @@ const SimplifiedCourseOutline = ({ courseId }: SimplifiedCourseOutlineProps) => 
               />
             ) : null}
           </TransitionReplace>
-          
+
           {/* Simplified View Header */}
           <Card className="mb-3">
             <Card.Header>
@@ -279,7 +279,7 @@ const SimplifiedCourseOutline = ({ courseId }: SimplifiedCourseOutlineProps) => 
                   <h3 className="mb-1">{intl.formatMessage(messages.simplifiedViewTitle)}</h3>
                   <p className="text-muted mb-0">{intl.formatMessage(messages.simplifiedViewDescription)}</p>
                 </div>
-                <Button 
+                <Button
                   variant="outline-primary"
                   iconBefore={SettingsIcon}
                   onClick={handleToggleToNormalView}

@@ -34,11 +34,11 @@ const OnlineClassForm = ({ onSubmit, onCancel }) => {
 
   const validateForm = () => {
     const newErrors = {};
-    
+
     if (!formData.title.trim()) {
       newErrors.title = 'Tiêu đề là bắt buộc';
     }
-    
+
     if (!formData.meetingUrl.trim()) {
       newErrors.meetingUrl = 'Đường dẫn lớp học là bắt buộc';
     } else if (!formData.meetingUrl.match(/^https?:\/\/.+/)) {
@@ -52,14 +52,14 @@ const OnlineClassForm = ({ onSubmit, onCancel }) => {
   const handleInputChange = (field, value) => {
     setFormData(prev => ({
       ...prev,
-      [field]: value
+      [field]: value,
     }));
-    
+
     // Clear error when user starts typing
     if (errors[field]) {
       setErrors(prev => ({
         ...prev,
-        [field]: ''
+        [field]: '',
       }));
     }
   };
@@ -75,12 +75,13 @@ const OnlineClassForm = ({ onSubmit, onCancel }) => {
     <div style={{ padding: '20px' }}>
       <form onSubmit={handleSubmit}>
         <div style={{ marginBottom: '20px' }}>
-          <label style={{ 
-            display: 'block', 
-            marginBottom: '8px', 
+          <label style={{
+            display: 'block',
+            marginBottom: '8px',
             fontWeight: 'bold',
-            color: '#333'
-          }}>
+            color: '#333',
+          }}
+          >
             Tiêu Đề Lớp Học *
           </label>
           <input
@@ -93,7 +94,7 @@ const OnlineClassForm = ({ onSubmit, onCancel }) => {
               padding: '10px',
               border: errors.title ? '2px solid #dc3545' : '1px solid #ddd',
               borderRadius: '4px',
-              fontSize: '14px'
+              fontSize: '14px',
             }}
             autoFocus
           />
@@ -105,12 +106,13 @@ const OnlineClassForm = ({ onSubmit, onCancel }) => {
         </div>
 
         <div style={{ marginBottom: '20px' }}>
-          <label style={{ 
-            display: 'block', 
-            marginBottom: '8px', 
+          <label style={{
+            display: 'block',
+            marginBottom: '8px',
             fontWeight: 'bold',
-            color: '#333'
-          }}>
+            color: '#333',
+          }}
+          >
             Đường Dẫn Lớp Học *
           </label>
           <input
@@ -123,7 +125,7 @@ const OnlineClassForm = ({ onSubmit, onCancel }) => {
               padding: '10px',
               border: errors.meetingUrl ? '2px solid #dc3545' : '1px solid #ddd',
               borderRadius: '4px',
-              fontSize: '14px'
+              fontSize: '14px',
             }}
           />
           {errors.meetingUrl && (
@@ -136,14 +138,15 @@ const OnlineClassForm = ({ onSubmit, onCancel }) => {
           </div>
         </div>
 
-        <div style={{ 
-          display: 'flex', 
-          gap: '10px', 
+        <div style={{
+          display: 'flex',
+          gap: '10px',
           justifyContent: 'flex-end',
           borderTop: '1px solid #eee',
           paddingTop: '20px',
-          marginTop: '30px'
-        }}>
+          marginTop: '30px',
+        }}
+        >
           <button
             type="button"
             onClick={onCancel}
@@ -153,7 +156,7 @@ const OnlineClassForm = ({ onSubmit, onCancel }) => {
               border: '1px solid #ddd',
               borderRadius: '4px',
               cursor: 'pointer',
-              fontSize: '14px'
+              fontSize: '14px',
             }}
           >
             Hủy
@@ -167,7 +170,7 @@ const OnlineClassForm = ({ onSubmit, onCancel }) => {
               border: 'none',
               borderRadius: '4px',
               cursor: 'pointer',
-              fontSize: '14px'
+              fontSize: '14px',
             }}
           >
             Tạo Lớp Học Trực Tuyến
@@ -185,9 +188,9 @@ const SimpleContentForm = ({ contentType, onSubmit, onCancel }) => {
   const handleSubmit = (e) => {
     e.preventDefault();
     if (title.trim()) {
-      onSubmit({ 
+      onSubmit({
         title: title.trim(),
-        contentType: contentType
+        contentType,
       });
     }
   };
@@ -197,15 +200,16 @@ const SimpleContentForm = ({ contentType, onSubmit, onCancel }) => {
       <h3 style={{ marginBottom: '20px', color: config.color }}>
         Cấu Hình {config.displayName}
       </h3>
-      
+
       <form onSubmit={handleSubmit}>
         <div style={{ marginBottom: '20px' }}>
-          <label style={{ 
-            display: 'block', 
-            marginBottom: '8px', 
+          <label style={{
+            display: 'block',
+            marginBottom: '8px',
             fontWeight: 'bold',
-            color: '#333'
-          }}>
+            color: '#333',
+          }}
+          >
             Tiêu Đề *
           </label>
           <input
@@ -218,21 +222,22 @@ const SimpleContentForm = ({ contentType, onSubmit, onCancel }) => {
               padding: '10px',
               border: '1px solid #ddd',
               borderRadius: '4px',
-              fontSize: '14px'
+              fontSize: '14px',
             }}
             autoFocus
             required
           />
         </div>
 
-        <div style={{ 
-          display: 'flex', 
-          gap: '10px', 
+        <div style={{
+          display: 'flex',
+          gap: '10px',
           justifyContent: 'flex-end',
           borderTop: '1px solid #eee',
           paddingTop: '20px',
-          marginTop: '30px'
-        }}>
+          marginTop: '30px',
+        }}
+        >
           <button
             type="button"
             onClick={onCancel}
@@ -242,7 +247,7 @@ const SimpleContentForm = ({ contentType, onSubmit, onCancel }) => {
               border: '1px solid #ddd',
               borderRadius: '4px',
               cursor: 'pointer',
-              fontSize: '14px'
+              fontSize: '14px',
             }}
           >
             Hủy
@@ -256,7 +261,7 @@ const SimpleContentForm = ({ contentType, onSubmit, onCancel }) => {
               border: 'none',
               borderRadius: '4px',
               cursor: 'pointer',
-              fontSize: '14px'
+              fontSize: '14px',
             }}
           >
             Tạo {config.displayName}
@@ -317,7 +322,7 @@ const ChalixContentModal = ({
     onClose();
   }, [onClose, initialSelectedType]);
 
-  if (!isOpen) return null;
+  if (!isOpen) { return null; }
 
   return (
     <div style={{
@@ -330,8 +335,9 @@ const ChalixContentModal = ({
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      zIndex: 9999
-    }}>
+      zIndex: 9999,
+    }}
+    >
       <div style={{
         backgroundColor: 'white',
         borderRadius: '8px',
@@ -339,30 +345,31 @@ const ChalixContentModal = ({
         maxWidth: '600px',
         maxHeight: '90vh',
         overflow: 'auto',
-        boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
-      }}>
+        boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+      }}
+      >
         {/* Header */}
-        <div style={{ 
-          display: 'flex', 
-          justifyContent: 'space-between', 
-          alignItems: 'center', 
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
           padding: '20px 20px 0 20px',
-          borderBottom: step === 'select' ? '1px solid #eee' : 'none'
-        }}>
+          borderBottom: step === 'select' ? '1px solid #eee' : 'none',
+        }}
+        >
           <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 'bold' }}>
             {step === 'select'
               ? 'Thêm Nội Dung Chalix'
-              : `Cấu Hình ${CHALIX_CONTENT_TYPES[selectedType]?.displayName}`
-            }
+              : `Cấu Hình ${CHALIX_CONTENT_TYPES[selectedType]?.displayName}`}
           </h2>
-          <button 
-            onClick={handleModalClose} 
-            style={{ 
-              background: 'none', 
-              border: 'none', 
+          <button
+            onClick={handleModalClose}
+            style={{
+              background: 'none',
+              border: 'none',
               fontSize: '24px',
               cursor: 'pointer',
-              color: '#999'
+              color: '#999',
             }}
           >
             ×
@@ -385,7 +392,7 @@ const ChalixContentModal = ({
                     padding: '20px',
                     textAlign: 'center',
                     cursor: 'pointer',
-                    transition: 'transform 0.2s, box-shadow 0.2s'
+                    transition: 'transform 0.2s, box-shadow 0.2s',
                   }}
                   onClick={() => handleTypeSelect(type)}
                   onMouseEnter={(e) => {

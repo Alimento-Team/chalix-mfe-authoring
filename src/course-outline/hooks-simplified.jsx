@@ -37,7 +37,7 @@ import {
 } from './data/thunk';
 import { useCreateCourseBlock } from './data/apiHooks';
 import { getCourseItem } from './data/api';
-import { 
+import {
   getSimplifiedCourseOutlineIndex,
   addNewSimplifiedUnit,
   setSimplifiedUnitOrderList,
@@ -60,7 +60,7 @@ const useSimplifiedCourseOutline = ({ courseId }) => {
     mfeProctoredExamSettingsUrl,
     advanceSettingsUrl,
   } = useSelector(getOutlineIndexData);
-  
+
   const { outlineIndexLoadingStatus } = useSelector(getLoadingStatus);
   const statusBarData = useSelector(getStatusBarData);
   const savingStatus = useSelector(getSavingStatus);
@@ -182,7 +182,7 @@ const useSimplifiedCourseOutline = ({ courseId }) => {
       try {
         // First load the regular course outline for basic data
         dispatch(fetchCourseOutlineIndexQuery(courseId));
-        
+
         // Then try to load simplified structure if available
         try {
           const simplifiedData = await getSimplifiedCourseOutlineIndex(courseId);
@@ -204,7 +204,7 @@ const useSimplifiedCourseOutline = ({ courseId }) => {
 
   // Additional effect to handle fallback unit extraction from sections
   const sectionsList = useSelector(getSectionsList);
-  
+
   useEffect(() => {
     if (units.length === 0 && sectionsList.length > 0) {
       // Fallback: extract units from sections structure
@@ -242,7 +242,7 @@ const useSimplifiedCourseOutline = ({ courseId }) => {
     closePublishModal,
     isConfigureModalOpen,
     openConfigureModal,
-    isAddLibraryModalOpen: isAddLibraryModalOpen,
+    isAddLibraryModalOpen,
     openAddLibraryModal,
     closeAddLibraryModal,
     handleConfigureModalClose,

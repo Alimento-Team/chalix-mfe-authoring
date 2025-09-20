@@ -6,7 +6,6 @@
   }
 
   .btn-icon {
-
     &:hover,
     &:active,
     &:focus {
@@ -36,7 +35,6 @@
   }
 
   .btn-icon {
-
     &:hover,
     &:active,
     &:focus {
@@ -66,7 +64,6 @@
   }
 
   .btn-icon {
-
     &:hover,
     &:active,
     &:focus {
@@ -96,7 +93,6 @@
   }
 
   .btn-icon {
-
     &:hover,
     &:active,
     &:focus {
@@ -126,7 +122,6 @@
   }
 
   .btn-icon {
-
     &:hover,
     &:active,
     &:focus {
@@ -156,7 +151,6 @@
   }
 
   .btn-icon {
-
     &:hover,
     &:active,
     &:focus {
@@ -186,7 +180,6 @@
   }
 
   .btn-icon {
-
     &:hover,
     &:active,
     &:focus {
@@ -217,7 +210,6 @@
   }
 
   .btn-icon {
-
     &:hover,
     &:active,
     &:focus {
@@ -248,7 +240,6 @@
   }
 
   .btn-icon {
-
     &:hover,
     &:active,
     &:focus {
@@ -278,7 +269,6 @@
   }
 
   .btn-icon {
-
     &:hover,
     &:active,
     &:focus {
@@ -301,29 +291,28 @@
 }
 
 .component-style-chalix-slide {
-  background-color: #28a745;
+  background-color: #28A745;
 
   .pgn__icon:not(.btn-icon-before) {
     color: white;
   }
 
   .btn-icon {
-
     &:hover,
     &:active,
     &:focus {
-      background-color: darken(#28a745, 15%);
+      background-color: darken(#28A745, 15%);
     }
   }
 
   .btn {
-    background-color: lighten(#28a745, 10%);
+    background-color: lighten(#28A745, 10%);
     border: 0;
 
     &:hover,
     &:active,
     &:focus {
-      background-color: lighten(#28a745, 20%);
+      background-color: lighten(#28A745, 20%);
       border: 1px solid var(--pgn-color-primary-base);
       margin: -1px;
     }
@@ -338,7 +327,6 @@
   }
 
   .btn-icon {
-
     &:hover,
     &:active,
     &:focus {

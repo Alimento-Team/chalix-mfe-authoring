@@ -315,7 +315,7 @@ const CourseOutline = ({ courseId }: CourseOutlineProps) => {
               />
             ) : null}
           </TransitionReplace>
-          
+
           {/* Normal View Header with Toggle */}
           <Card className="mb-3">
             <Card.Header>
@@ -324,7 +324,7 @@ const CourseOutline = ({ courseId }: CourseOutlineProps) => {
                   <h3 className="mb-1">{intl.formatMessage(messages.normalViewTitle)}</h3>
                   <p className="text-muted mb-0">{intl.formatMessage(messages.normalViewDescription)}</p>
                 </div>
-                <Button 
+                <Button
                   variant="outline-primary"
                   iconBefore={SettingsIcon}
                   onClick={handleToggleToSimplifiedView}

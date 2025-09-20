@@ -110,7 +110,7 @@ const AddComponent = ({
       // WORKAROUND: Use standard XBlock creation API since custom Chalix API isn't deployed yet
       // Create a vertical (unit) with the title
       const unitDisplayName = `${contentData.title} (Lớp Học Trực Tuyến)`;
-      
+
       handleCreateNewCourseXBlock({
         type: 'vertical',
         parentLocator: blockId,
@@ -143,7 +143,7 @@ const AddComponent = ({
                 </p>
               </div>
             `;
-            
+
             handleCreateNewCourseXBlock({
               type: 'html',
               parentLocator: unitResult.locator,
@@ -156,7 +156,7 @@ const AddComponent = ({
             });
           }, 500);
         }
-        
+
         // Refresh the page after creation
         setTimeout(() => {
           dispatch(fetchCourseSectionVerticalData(blockId, sequenceId));
@@ -165,7 +165,6 @@ const AddComponent = ({
 
       setChalixSelectedType(null);
       closeChalixModal();
-      
     } catch (error) {
       alert(`Error creating content: ${error.message}`);
     }
@@ -247,7 +246,7 @@ const AddComponent = ({
         {Object.keys(componentTemplates).length && isUnitVerticalType ? (
           <>
             <h5 className="h3 mb-4 text-center">{intl.formatMessage(messages.title)}</h5>
-            
+
             {/* Direct Chalix Content Type Buttons */}
             <ul className="new-component-type list-unstyled m-0 d-flex flex-wrap justify-content-center">
               <li className="new-component-item d-flex">

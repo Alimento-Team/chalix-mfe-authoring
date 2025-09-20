@@ -22,6 +22,7 @@ import { reducer as courseOptimizerReducer } from './optimizer-page/data/slice';
 import { reducer as genericReducer } from './generic/data/slice';
 import { reducer as courseImportReducer } from './import-page/data/slice';
 import { reducer as videosReducer } from './files-and-videos/videos-page/data/slice';
+import { reducer as slidesReducer } from './files-and-videos/slides-page/data/slice';
 import { reducer as courseOutlineReducer } from './course-outline/data/slice';
 import { reducer as courseUnitReducer } from './course-unit/data/slice';
 import { reducer as courseChecklistReducer } from './course-checklist/data/slice';
@@ -56,6 +57,7 @@ export interface DeprecatedReduxState {
   generic: Record<string, any>;
   courseImport: Record<string, any>;
   videos: Record<string, any>;
+  slides: Record<string, any>;
   courseOutline: Record<string, any>;
   courseUnit: Record<string, any>;
   courseChecklist: Record<string, any>;
@@ -87,6 +89,7 @@ export default function initializeStore(preloadedState: Partial<DeprecatedReduxS
       generic: genericReducer,
       courseImport: courseImportReducer,
       videos: videosReducer,
+      slides: slidesReducer,
       courseOutline: courseOutlineReducer,
       courseUnit: courseUnitReducer,
       courseChecklist: courseChecklistReducer,

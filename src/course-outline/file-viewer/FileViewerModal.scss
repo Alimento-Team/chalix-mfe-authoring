@@ -1,0 +1,66 @@
+.file-viewer-modal {
+    .pdf-viewer-container {
+        .pdf-controls {
+            background-color: #F8F9FA;
+            padding: 12px;
+            border-radius: 4px;
+            margin-bottom: 16px;
+        }
+
+        .pdf-content {
+            border: 1px solid #DEE2E6;
+            background-color: #F8F9FA;
+            border-radius: 4px;
+            padding: 16px;
+            text-align: center;
+
+            .react-pdf__Page {
+                margin: 0 auto;
+                box-shadow: 0 2px 8px rgb(0 0 0 / .1);
+            }
+        }
+    }
+
+    .pptx-viewer-container {
+        iframe {
+            border: 1px solid #DEE2E6;
+            border-radius: 4px;
+        }
+    }
+
+    .unsupported-file-container {
+        padding: 40px 20px;
+        text-align: center;
+
+        .alert {
+            max-width: 500px;
+            margin: 0 auto;
+        }
+    }
+
+    .modal-footer {
+        border-top: 1px solid #DEE2E6;
+        padding-top: 16px;
+    }
+}
+
+// Responsive adjustments
+@media (width <=768px) {
+    .file-viewer-modal {
+        .pdf-controls {
+            flex-direction: column;
+            gap: 12px;
+
+            .page-controls,
+            .zoom-controls {
+                justify-content: center;
+            }
+        }
+
+        .pptx-viewer-container {
+            iframe {
+                height: 400px;
+            }
+        }
+    }
+}

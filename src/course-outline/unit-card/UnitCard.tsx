@@ -113,7 +113,7 @@ const UnitCard = ({
   // add actions to control display of move up & down menu buton.
   const moveUpDetails = getPossibleMoves(index, -1);
   const moveDownDetails = getPossibleMoves(index, 1);
-  
+
   // Handle null subsection (simplified view)
   const upstreamRef = subsection?.upstreamInfo?.upstreamRef;
   actions.allowMoveUp = !isEmpty(moveUpDetails) && !upstreamRef;

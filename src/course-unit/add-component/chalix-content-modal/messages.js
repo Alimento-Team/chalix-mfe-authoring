@@ -31,7 +31,7 @@ const messages = defineMessages({
     defaultMessage: 'Create Content',
     description: 'Create content button text',
   },
-  
+
   // Form labels
   titleLabel: {
     id: 'course-authoring.course-unit.add-component.chalix.form.title',

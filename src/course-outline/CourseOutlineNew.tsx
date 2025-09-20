@@ -420,7 +420,7 @@ const CourseOutlineNew = ({ courseId }: CourseOutlineNewProps) => {
               />
             ) : null}
           </TransitionReplace>
-          
+
           {/* Layout Toggle Card */}
           <Card className="mb-3">
             <Card.Header>
@@ -429,7 +429,7 @@ const CourseOutlineNew = ({ courseId }: CourseOutlineNewProps) => {
                   <h3 className="mb-1">Course Outline</h3>
                   <p className="text-muted mb-0">Manage your course structure and content</p>
                 </div>
-                <Button 
+                <Button
                   variant="outline-primary"
                   iconBefore={SettingsIcon}
                   onClick={toggleToNewLayout}

@@ -48,7 +48,7 @@ export async function addNewSimplifiedUnit(parentLocator: string, displayName: s
 export async function setSimplifiedUnitOrderList(courseId: string, children: Array<string>): Promise<object> {
   const formattedCourseId = courseId.split('course-v1:')[1];
   const courseBlockUrl = `${getApiBaseUrl()}/xblock/block-v1:${formattedCourseId}+type@course+block@course`;
-  
+
   const { data } = await getAuthenticatedHttpClient()
     .put(courseBlockUrl, {
       children,
@@ -65,8 +65,8 @@ export async function setSimplifiedUnitOrderList(courseId: string, children: Arr
  * @returns {Promise<Object>}
  */
 export async function addUnitFromLibrarySimplified(
-  parentLocator: string, 
-  libraryContentKey: string
+  parentLocator: string,
+  libraryContentKey: string,
 ): Promise<object> {
   const { data } = await getAuthenticatedHttpClient()
     .post(`${getApiBaseUrl()}/xblock/`, {
