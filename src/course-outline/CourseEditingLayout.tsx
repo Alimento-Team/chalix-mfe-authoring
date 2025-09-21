@@ -198,6 +198,8 @@ const CourseEditingLayout: React.FC<CourseEditingLayoutProps> = ({
               videoIds,
               uploadingIdsRef,
             ));
+            // Refresh video list after successful upload
+            await dispatch(fetchVideos(courseId));
           } else if (contentType === 'slide') {
             console.log('Uploading slide files');
             console.log('courseId:', courseId);
@@ -210,6 +212,8 @@ const CourseEditingLayout: React.FC<CourseEditingLayoutProps> = ({
               uploadingIdsRef,
             ));
             console.log('addSlideFile dispatch completed');
+            // Refresh slide list after successful upload
+            await dispatch(fetchSlides(courseId));
           }
           setUploadMessage('Tải lên thành công!');
           setTimeout(() => setShowToast(false), 3000);
@@ -730,21 +734,40 @@ const CourseEditingLayout: React.FC<CourseEditingLayoutProps> = ({
           {selectedSlideData && selectedSlideData.slides.length > 0 ? (
             <div>
               <p>Chọn một slide để xem cho bài học: <strong>{selectedSlideData.unit?.displayName}</strong></p>
-              <div className="slide-list" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div className="slide-list" style={{ display: 'flex', flexDirection: 'column', gap: '12px'}}>
                 {selectedSlideData.slides.map((slide, index) => (
                   <Card key={slide.slideId || index} className="mb-3">
                     <Card.Body>
-                      <div className="d-flex align-items-center" style={{ gap: '6px' }}>
-                        <SlideIcon className="me-3 text-primary" style={{ fontSize: '2rem', margin: '4px' }} />
+                      <div className="d-flex align-items-center" style={{ gap: '6px', margin: '4px 0px 0px 0px' }}>
+                        <SlideIcon className="me-3 text-primary" style={{ fontSize: '2rem', margin: '8px' }} />
                         <div className="flex-grow-1" style={{ padding: '10px' }}>
                           <h6 className="mb-1">{slide.displayName || slide.fileName || 'Untitled Slide'}</h6>
                           <small className="text-muted">
                             Slide ID: {slide.slideId}
-                            {slide.fileSize && ` • Kích thước: ${Math.round(slide.fileSize / 1024)} KB`}
-                            {slide.fileType && ` • Loại: ${slide.fileType}`}
+                            {slide.fileSize && (
+                              <>
+                              <br />
+                              • Kích thước: {
+                                (() => {
+                                const size = slide.fileSize;
+                                if (size < 1024) return `${size} B`;
+                                if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`;
+                                if (size < 1024 * 1024 * 1024) return `${(size / (1024 * 1024)).toFixed(1)} MB`;
+                                return `${(size / (1024 * 1024 * 1024)).toFixed(2)} GB`;
+                                })()
+                              }
+                              </>
+                            )}
+                            {slide.fileType && (
+                              <>
+                              <br />
+                              • Loại: {slide.fileType}
+                              {slide.is_pptx && <span className="badge badge-info ms-1" style={{ fontSize: '0.7em', backgroundColor: '#17a2b8', color: 'white' }}>JS Viewer</span>}
+                              </>
+                            )}
                           </small>
                         </div>
-                        <div className="d-flex" style={{ gap: '6px' }}>
+                        <div className="d-flex" style={{ gap: '6px' , padding: '6px'}}>
                           <Button
                             variant="primary"
                             size="sm"
@@ -782,7 +805,7 @@ const CourseEditingLayout: React.FC<CourseEditingLayoutProps> = ({
         <FileViewerModal
           isOpen={showFileViewerModal}
           onClose={() => setShowFileViewerModal(false)}
-          fileUrl={currentSlide.publicUrl || currentSlide.downloadLink || currentSlide.url}
+          fileUrl={currentSlide.viewer_url || currentSlide.publicUrl || currentSlide.downloadLink || currentSlide.url}
           fileName={currentSlide.displayName || currentSlide.fileName || 'Untitled File'}
           fileType={currentSlide.fileType || currentSlide.contentType}
         />

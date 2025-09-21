@@ -73,9 +73,8 @@ const CourseOutlineNew = ({ courseId }: CourseOutlineNewProps) => {
   const intl = useIntl();
   const location = useLocation();
 
-  // Check for new layout preference using URLSearchParams
-  const searchParams = new URLSearchParams(location.search);
-  const useNewLayout = searchParams.get('layout') === 'new' || searchParams.get('view') === 'teacher';
+  // Always use new layout by default (no longer require ?layout=new parameter)
+  const useNewLayout = true;
 
   const {
     courseUsageKey,
@@ -192,18 +191,9 @@ const CourseOutlineNew = ({ courseId }: CourseOutlineNewProps) => {
     window.location.href = `/course/${courseId}/settings/details`;
   };
 
-  // Toggle layout functions
-  const toggleToNewLayout = () => {
-    const newParams = new URLSearchParams(location.search);
-    newParams.set('layout', 'new');
-    window.location.search = newParams.toString();
-  };
-
-  const toggleToOriginalLayout = () => {
-    const newParams = new URLSearchParams(location.search);
-    newParams.delete('layout');
-    newParams.delete('view');
-    window.location.search = newParams.toString();
+  // Navigate to traditional layout
+  const switchToTraditionalLayout = () => {
+    window.location.href = `/course/${courseId}/traditional`;
   };
 
   /**
@@ -430,11 +420,11 @@ const CourseOutlineNew = ({ courseId }: CourseOutlineNewProps) => {
                   <p className="text-muted mb-0">Manage your course structure and content</p>
                 </div>
                 <Button
-                  variant="outline-primary"
+                  variant="outline-secondary"
                   iconBefore={SettingsIcon}
-                  onClick={toggleToNewLayout}
+                  onClick={switchToTraditionalLayout}
                 >
-                  Switch to Teacher View
+                  Switch to Traditional View
                 </Button>
               </div>
             </Card.Header>

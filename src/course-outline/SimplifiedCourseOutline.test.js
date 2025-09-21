@@ -2,5 +2,7 @@
 import SimplifiedCourseOutline from './SimplifiedCourseOutline';
 
 describe('SimplifiedCourseOutline', () => {
-
-export default SimplifiedCourseOutline;
+  it('should import successfully', () => {
+    expect(SimplifiedCourseOutline).toBeDefined();
+  });
+});

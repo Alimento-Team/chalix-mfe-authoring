@@ -339,6 +339,14 @@ export function addSlideFile(
         hasFailure = await uploadToBucket({
           courseId, uploadUrl, file, uploadingIdsRef, slideId, dispatch,
         });
+        // Upload succeeded
+        if (!hasFailure) {
+          uploadingIdsRef.current.uploadData[slideId] = {
+            ...uploadingIdsRef.current.uploadData[slideId],
+            status: RequestStatus.SUCCESSFUL,
+            processing: false,
+          };
+        }
       } else {
         hasFailure = true;
         uploadingIdsRef.current.uploadData[idx] = {

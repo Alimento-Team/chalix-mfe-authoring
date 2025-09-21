@@ -149,8 +149,22 @@ const useSimplifiedCourseOutline = ({ courseId }) => {
   };
 
   const handleDeleteItemSubmit = () => {
+    let deleteThunk;
     if (currentItem.category === COURSE_BLOCK_NAMES.vertical.id) {
-      dispatch(deleteCourseUnitQuery(currentItem.id, null, null));
+      deleteThunk = deleteCourseUnitQuery(currentItem.id, null, null);
+    } else if (currentItem.category === COURSE_BLOCK_NAMES.sequential.id) {
+      deleteThunk = deleteCourseSubsectionQuery(currentItem.id, currentItem.parentSectionId);
+    } else if (currentItem.category === COURSE_BLOCK_NAMES.chapter.id) {
+      deleteThunk = deleteCourseSectionQuery(currentItem.id);
+    }
+    if (deleteThunk) {
+      dispatch(deleteThunk)
+        .then(() => {
+          showToast('Xóa thành công!', undefined);
+        })
+        .catch(() => {
+          showToast('Xóa thất bại!', undefined);
+        });
     }
     closeDeleteModal();
   };
@@ -228,6 +242,7 @@ const useSimplifiedCourseOutline = ({ courseId }) => {
     }
   }, [sectionsList, units.length]);
 
+  const { showToast } = React.useContext(require('../generic/toast-context').ToastContext);
   return {
     courseUsageKey: courseStructure?.id,
     courseActions,
@@ -275,6 +290,7 @@ const useSimplifiedCourseOutline = ({ courseId }) => {
     errors,
     resetScrollState,
     handleConfigureItemSubmit,
+    showToast,
   };
 };
 

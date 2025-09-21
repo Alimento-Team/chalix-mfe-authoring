@@ -1,0 +1,46 @@
+diff --git a/node_modules/react-office-viewer/build/bundle.js b/node_modules/react-office-viewer/build/bundle.js
+index 9522cf4..00b6894 100644
+--- a/node_modules/react-office-viewer/build/bundle.js
++++ b/node_modules/react-office-viewer/build/bundle.js
+@@ -997,7 +997,9 @@ var ThumbnailView = /*#__PURE__*/React.forwardRef(function (props, ref) {
+   var resetThumbnail = function resetThumbnail() {
+     selectedPageRef.current = null;
+     viewportRef.current = null;
+-    sidebarRef.current.innerHTML = "";
++    if (sidebarRef && sidebarRef.current) {
++      sidebarRef.current.innerHTML = "";
++    }
+   };
+   return /*#__PURE__*/React__default["default"].createElement("div", {
+     className: styles$3["sidebarContent"],
+@@ -1287,8 +1289,10 @@ var Toolbar = /*#__PURE__*/React.forwardRef(function (props, ref) {
+   var onPrint = function onPrint() {
+     var iframe = printFrameRef.current;
+     var doc = iframe.contentWindow.document;
+-    var printContainer = iframe.contentWindow.document.body;
+-    printContainer.innerHTML = '';
++    var printContainer = iframe && iframe.contentWindow && iframe.contentWindow.document && iframe.contentWindow.document.body;
++    if (printContainer) {
++      printContainer.innerHTML = '';
++    }
+     var style = doc.head.getElementsByTagName('style')[0];
+     if (!style) {
+       style = document.createElement('style');
+@@ -2160,13 +2164,15 @@ function DocxViewer$1(props) {
+             _yield$mammoth$conver = _context.sent;
+             value = _yield$mammoth$conver.value;
+             div = document.createElement('div');
+-            div.innerHTML = value;
++            if (div) {
++              div.innerHTML = value;
++            }
+             //处理所有的a标签，使其在新标签页打开
+             domList = div.getElementsByTagName('a');
+             Array.from(domList).forEach(function (item) {
+               item.setAttribute('target', '_blank');
+             });
+-            setDocHtmlStr(div.innerHTML);
++            setDocHtmlStr(div ? div.innerHTML : '');
+             _context.next = 18;
+             break;
+           case 14:
