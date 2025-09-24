@@ -8,13 +8,15 @@ import {
   ActionRow,
   Alert,
   Hyperlink,
+  Card,
 } from '@openedx/paragon';
 import { useIntl, FormattedMessage } from '@edx/frontend-platform/i18n';
 
 import { COMPONENT_TYPES } from '../../../generic/block-type-utils/constants';
+import UnitMediaUpload from '../../unit-media-upload';
 import messages from './messages';
 
-const ChalixContentForm = ({ contentType, onSubmit, onCancel }) => {
+const ChalixContentForm = ({ contentType, onSubmit, onCancel, unitId, courseId }) => {
   const intl = useIntl();
   const [formData, setFormData] = useState({});
   const [questions, setQuestions] = useState([{ question: '', choices: [{ text: '', correct: false }] }]);
@@ -218,32 +220,59 @@ const ChalixContentForm = ({ contentType, onSubmit, onCancel }) => {
         <FormattedMessage {...messages.videoSourceInfo} />
       </Alert>
 
-      <Form.Group>
-        <Form.Label>
-          <FormattedMessage {...messages.videoUrlLabel} />
-        </Form.Label>
-        <Form.Control
-          type="url"
-          value={formData.videoUrl || ''}
-          onChange={(e) => handleInputChange('videoUrl', e.target.value)}
-          placeholder="https://example.com/video.mp4"
-        />
-      </Form.Group>
+      {/* Unit-level video upload */}
+      <Card className="mb-3">
+        <Card.Header>
+          <FormattedMessage {...messages.uploadVideoLabel} />
+        </Card.Header>
+        <Card.Body>
+          <UnitMediaUpload
+            unitId={unitId}
+            courseId={courseId}
+            mediaType="video"
+            onUploadComplete={(media) => {
+              if (media) {
+                handleInputChange('uploadedVideo', media);
+              }
+            }}
+          />
+        </Card.Body>
+      </Card>
 
-      <Form.Group>
-        <Form.Label>
-          <FormattedMessage {...messages.youtubeIdLabel} />
-        </Form.Label>
-        <Form.Control
-          type="text"
-          value={formData.youtubeId || ''}
-          onChange={(e) => handleInputChange('youtubeId', e.target.value)}
-          placeholder="dQw4w9WgXcQ"
-        />
-        <Form.Text className="text-muted">
-          <FormattedMessage {...messages.youtubeIdHelp} />
-        </Form.Text>
-      </Form.Group>
+      {/* Alternative: External video sources */}
+      <Card className="mb-3">
+        <Card.Header>
+          <FormattedMessage {...messages.externalVideoLabel} />
+        </Card.Header>
+        <Card.Body>
+          <Form.Group>
+            <Form.Label>
+              <FormattedMessage {...messages.videoUrlLabel} />
+            </Form.Label>
+            <Form.Control
+              type="url"
+              value={formData.videoUrl || ''}
+              onChange={(e) => handleInputChange('videoUrl', e.target.value)}
+              placeholder="https://example.com/video.mp4"
+            />
+          </Form.Group>
+
+          <Form.Group>
+            <Form.Label>
+              <FormattedMessage {...messages.youtubeIdLabel} />
+            </Form.Label>
+            <Form.Control
+              type="text"
+              value={formData.youtubeId || ''}
+              onChange={(e) => handleInputChange('youtubeId', e.target.value)}
+              placeholder="dQw4w9WgXcQ"
+            />
+            <Form.Text className="text-muted">
+              <FormattedMessage {...messages.youtubeIdHelp} />
+            </Form.Text>
+          </Form.Group>
+        </Card.Body>
+      </Card>
 
       {errors.video && (
         <Alert variant="danger">
@@ -264,39 +293,65 @@ const ChalixContentForm = ({ contentType, onSubmit, onCancel }) => {
 
   const renderSlideForm = () => (
     <>
-      <Form.Group>
-        <Form.Label>
-          <FormattedMessage {...messages.fileUrlLabel} />
-          <span className="text-danger">*</span>
-        </Form.Label>
-        <Form.Control
-          type="url"
-          value={formData.fileUrl || ''}
-          onChange={(e) => handleInputChange('fileUrl', e.target.value)}
-          placeholder="https://example.com/slides.pdf"
-          isInvalid={!!errors.fileUrl}
-        />
-        {errors.fileUrl && (
-          <Form.Control.Feedback type="invalid">
-            {errors.fileUrl}
-          </Form.Control.Feedback>
-        )}
-      </Form.Group>
+      {/* Unit-level slide upload */}
+      <Card className="mb-3">
+        <Card.Header>
+          <FormattedMessage {...messages.uploadSlideLabel} />
+        </Card.Header>
+        <Card.Body>
+          <UnitMediaUpload
+            unitId={unitId}
+            courseId={courseId}
+            mediaType="slide"
+            onUploadComplete={(media) => {
+              if (media) {
+                handleInputChange('uploadedSlide', media);
+              }
+            }}
+          />
+        </Card.Body>
+      </Card>
 
-      <Form.Group>
-        <Form.Label>
-          <FormattedMessage {...messages.fileTypeLabel} />
-        </Form.Label>
-        <Form.Control
-          as="select"
-          value={formData.fileType || 'pdf'}
-          onChange={(e) => handleInputChange('fileType', e.target.value)}
-        >
-          <option value="pdf">PDF</option>
-          <option value="pptx">PowerPoint (PPTX)</option>
-          <option value="other">Other</option>
-        </Form.Control>
-      </Form.Group>
+      {/* Alternative: External slide URL */}
+      <Card className="mb-3">
+        <Card.Header>
+          <FormattedMessage {...messages.externalSlideLabel} />
+        </Card.Header>
+        <Card.Body>
+          <Form.Group>
+            <Form.Label>
+              <FormattedMessage {...messages.fileUrlLabel} />
+            </Form.Label>
+            <Form.Control
+              type="url"
+              value={formData.fileUrl || ''}
+              onChange={(e) => handleInputChange('fileUrl', e.target.value)}
+              placeholder="https://example.com/slides.pdf"
+              isInvalid={!!errors.fileUrl}
+            />
+            {errors.fileUrl && (
+              <Form.Control.Feedback type="invalid">
+                {errors.fileUrl}
+              </Form.Control.Feedback>
+            )}
+          </Form.Group>
+
+          <Form.Group>
+            <Form.Label>
+              <FormattedMessage {...messages.fileTypeLabel} />
+            </Form.Label>
+            <Form.Control
+              as="select"
+              value={formData.fileType || 'pdf'}
+              onChange={(e) => handleInputChange('fileType', e.target.value)}
+            >
+              <option value="pdf">PDF</option>
+              <option value="pptx">PowerPoint (PPTX)</option>
+              <option value="other">Other</option>
+            </Form.Control>
+          </Form.Group>
+        </Card.Body>
+      </Card>
     </>
   );
 
@@ -482,6 +537,8 @@ ChalixContentForm.propTypes = {
   contentType: PropTypes.string.isRequired,
   onSubmit: PropTypes.func.isRequired,
   onCancel: PropTypes.func.isRequired,
+  unitId: PropTypes.string.isRequired,
+  courseId: PropTypes.string.isRequired,
 };
 
 export default ChalixContentForm;

@@ -38,8 +38,11 @@ export async function getCourseRerun(courseId: string): Promise<unknown> {
 
 /**
  * Create or rerun course with data.
+ * Accepts extra fields: estimatedHours, onlineCourseLink, instructor
+ * These will be stored in the course config if supported by backend.
  */
 export async function createOrRerunCourse(courseData: Object): Promise<unknown> {
+  // All fields, including estimatedHours, onlineCourseLink, instructor, are sent to backend
   const { data } = await getAuthenticatedHttpClient().post(
     getCreateOrRerunCourseUrl(),
     convertObjectToSnakeCase(courseData, true),

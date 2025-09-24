@@ -102,9 +102,21 @@ const ConfigureModal = ({
     selectedPartitionIndex: userPartitionInfo?.selectedPartitionIndex,
     selectedGroups: getSelectedGroups(),
     discussionEnabled,
+    estimatedHours: currentItemData.estimatedHours || '',
+    onlineCourseLink: currentItemData.onlineCourseLink || '',
+    instructor: currentItemData.instructor || '',
   };
 
   const validationSchema = Yup.object().shape({
+    estimatedHours: Yup.number()
+      .typeError('Thời lượng dự kiến phải là số')
+      .min(0, 'Thời lượng dự kiến phải lớn hơn 0')
+      .nullable(),
+    onlineCourseLink: Yup.string()
+      .url('Liên kết lớp học trực tuyến không hợp lệ')
+      .nullable(),
+    instructor: Yup.string()
+      .nullable(),
     isTimeLimited: Yup.boolean(),
     isProctoredExam: Yup.boolean(),
     isPracticeExam: Yup.boolean(),
@@ -197,6 +209,7 @@ const ConfigureModal = ({
                 isSubsection={isSubsection}
                 courseGraders={courseGraders === 'undefined' ? [] : courseGraders}
                 isSelfPaced={isSelfPaced}
+                showExtraFields={true}
               />
             </Tab>
             <Tab eventKey="visibility" title={intl.formatMessage(messages.visibilityTabTitle)}>
@@ -220,6 +233,7 @@ const ConfigureModal = ({
                 isSubsection={isSubsection}
                 courseGraders={courseGraders === 'undefined' ? [] : courseGraders}
                 isSelfPaced={isSelfPaced}
+                showExtraFields={true}
               />
             </Tab>
             <Tab eventKey="visibility" title={intl.formatMessage(messages.visibilityTabTitle)}>
@@ -250,41 +264,15 @@ const ConfigureModal = ({
           </Tabs>
         );
       case COURSE_BLOCK_NAMES.vertical.id:
-      case COURSE_BLOCK_NAMES.libraryContent.id:
-      case COURSE_BLOCK_NAMES.splitTest.id:
-      case COURSE_BLOCK_NAMES.component.id:
-        return (
-          <UnitTab
-            isXBlockComponent={isXBlockComponent}
-            category={category}
-            values={values}
-            setFieldValue={setFieldValue}
-            showWarning={visibilityState === VisibilityTypes.STAFF_ONLY && !ancestorHasStaffLock}
-            userPartitionInfo={userPartitionInfo}
-          />
-        );
+        // fall through
       default:
         return null;
     }
   };
 
   return (
-    <ModalDialog
-      className="configure-modal"
-      title={dialogTitle}
-      size="lg"
-      isOpen={isOpen}
-      onClose={onClose}
-      hasCloseButton
-      isFullscreenOnMobile
-      isOverflowVisible={false}
-    >
-      <div data-testid="configure-modal">
-        <ModalDialog.Header className="configure-modal__header">
-          <ModalDialog.Title>
-            {dialogTitle}
-          </ModalDialog.Title>
-        </ModalDialog.Header>
+    <ModalDialog open={isOpen} onClose={onClose} title={dialogTitle} size="lg">
+      <div className="configure-modal">
         <Formik
           initialValues={initialValues}
           onSubmit={handleSave}
@@ -292,9 +280,7 @@ const ConfigureModal = ({
           validateOnBlur
           validateOnChange
         >
-          {({
-            values, handleSubmit, setFieldValue,
-          }) => (
+          {({ values, handleSubmit, setFieldValue }) => (
             <>
               <ModalDialog.Body className="configure-modal__body">
                 <Form.Group size="sm" className="form-field">

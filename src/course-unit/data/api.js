@@ -15,6 +15,9 @@ export const postXBlockBaseApiUrl = () => `${getStudioBaseUrl()}/xblock/`;
 export const libraryBlockChangesUrl = (blockId) => `${getStudioBaseUrl()}/api/contentstore/v2/downstreams/${blockId}/sync`;
 export const chalixContentTypesApiUrl = (courseId) => `${getStudioBaseUrl()}/api/chalix/content-types/${courseId}/`;
 export const chalixUnitsApiUrl = (courseId) => `${getStudioBaseUrl()}/api/chalix/units/create/${courseId}/`;
+export const unitMediaApiUrl = (unitId, mediaType) => `${getStudioBaseUrl()}/api/contentstore/v1/units/${unitId}/${mediaType}s/`;
+export const unitMediaDetailApiUrl = (unitId, mediaType, mediaId) => `${getStudioBaseUrl()}/api/contentstore/v1/units/${unitId}/${mediaType}s/${mediaId}/`;
+export const unitMediaStatsApiUrl = (unitId) => `${getStudioBaseUrl()}/api/contentstore/v1/units/${unitId}/media/stats/`;
 
 /**
  * Edit course unit display name.
@@ -244,6 +247,84 @@ export async function getChalixContentTypes(courseId) {
 export async function createChalixUnit(courseId, unitData) {
   const { data } = await getAuthenticatedHttpClient()
     .post(chalixUnitsApiUrl(courseId), unitData);
+
+  return camelCaseObject(data);
+}
+
+/**
+ * Get media files for a specific unit and media type.
+ * @param {string} unitId - The unit ID.
+ * @param {string} mediaType - The media type ('video' or 'slide').
+ * @returns {Promise<Object>} - The media files data.
+ */
+export async function getUnitMedia(unitId, mediaType) {
+  const { data } = await getAuthenticatedHttpClient()
+    .get(unitMediaApiUrl(unitId, mediaType));
+
+  return camelCaseObject(data);
+}
+
+/**
+ * Upload a media file to a unit.
+ * @param {string} unitId - The unit ID.
+ * @param {string} courseId - The course ID.
+ * @param {string} mediaType - The media type ('video' or 'slide').
+ * @param {File} file - The file to upload.
+ * @param {string} displayName - Optional display name for the file.
+ * @returns {Promise<Object>} - The uploaded media file data.
+ */
+export async function uploadUnitMedia(unitId, courseId, mediaType, file, displayName = null) {
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('course_id', courseId);
+  if (displayName) {
+    formData.append('display_name', displayName);
+  }
+
+  const { data } = await getAuthenticatedHttpClient()
+    .post(unitMediaApiUrl(unitId, mediaType), formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+
+  return camelCaseObject(data);
+}
+
+/**
+ * Delete a media file from a unit.
+ * @param {string} unitId - The unit ID.
+ * @param {string} mediaType - The media type ('video' or 'slide').
+ * @param {string} mediaId - The media file ID.
+ * @returns {Promise<void>}
+ */
+export async function deleteUnitMedia(unitId, mediaType, mediaId) {
+  await getAuthenticatedHttpClient()
+    .delete(unitMediaDetailApiUrl(unitId, mediaType, mediaId));
+}
+
+/**
+ * Get detailed information about a specific media file.
+ * @param {string} unitId - The unit ID.
+ * @param {string} mediaType - The media type ('video' or 'slide').
+ * @param {string} mediaId - The media file ID.
+ * @returns {Promise<Object>} - The media file details.
+ */
+export async function getUnitMediaDetail(unitId, mediaType, mediaId) {
+  const { data } = await getAuthenticatedHttpClient()
+    .get(unitMediaDetailApiUrl(unitId, mediaType, mediaId));
+
+  return camelCaseObject(data);
+}
+
+/**
+ * Get statistics about all media files in a unit.
+ * @param {string} unitId - The unit ID.
+ * @returns {Promise<Object>} - The unit media statistics.
+ */
+export async function getUnitMediaStats(unitId) {
+  const { data } = await getAuthenticatedHttpClient()
+    .get(unitMediaStatsApiUrl(unitId));
 
   return camelCaseObject(data);
 }

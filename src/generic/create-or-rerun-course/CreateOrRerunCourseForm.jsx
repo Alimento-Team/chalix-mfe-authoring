@@ -53,6 +53,36 @@ const CreateOrRerunCourseForm = ({
   } = useCreateOrRerunCourse(initialValues);
 
   const newCourseFields = [
+    // Estimated hours to finish
+    {
+      label: intl.formatMessage({ defaultMessage: 'Thời lượng dự kiến (giờ)', id: 'estimatedHoursLabel' }),
+      helpText: intl.formatMessage({ defaultMessage: 'Số giờ ước tính để hoàn thành khoá học', id: 'estimatedHoursHelp' }),
+      name: 'estimatedHours',
+      value: values.estimatedHours || '',
+      placeholder: intl.formatMessage({ defaultMessage: 'Ví dụ: 40', id: 'estimatedHoursPlaceholder' }),
+      disabled: false,
+      type: 'number',
+    },
+    // Online course link
+    {
+      label: intl.formatMessage({ defaultMessage: 'Liên kết lớp học trực tuyến', id: 'onlineCourseLinkLabel' }),
+      helpText: intl.formatMessage({ defaultMessage: 'Nhập link Zoom, Google Meet, v.v.', id: 'onlineCourseLinkHelp' }),
+      name: 'onlineCourseLink',
+      value: values.onlineCourseLink || '',
+      placeholder: intl.formatMessage({ defaultMessage: 'https://...', id: 'onlineCourseLinkPlaceholder' }),
+      disabled: false,
+      type: 'text',
+    },
+    // Instructor assignment
+    {
+      label: intl.formatMessage({ defaultMessage: 'Chỉ định giảng viên', id: 'instructorLabel' }),
+      helpText: intl.formatMessage({ defaultMessage: 'Nhập email hoặc số điện thoại tài khoản giảng viên', id: 'instructorHelp' }),
+      name: 'instructor',
+      value: values.instructor || '',
+      placeholder: intl.formatMessage({ defaultMessage: 'Email hoặc số điện thoại', id: 'instructorPlaceholder' }),
+      disabled: false,
+      type: 'text',
+    },
     {
       label: intl.formatMessage(messages.courseDisplayNameLabel),
       helpText: intl.formatMessage(
@@ -239,6 +269,7 @@ const CreateOrRerunCourseForm = ({
                 isInvalid={hasErrorField(field.name)}
                 disabled={field.disabled}
                 ref={field?.ref}
+                type={field.type || 'text'}
               />
             ) : renderOrgField(field)}
             <Form.Text>{field.helpText}</Form.Text>

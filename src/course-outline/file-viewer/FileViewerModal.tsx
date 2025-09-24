@@ -10,6 +10,91 @@ import {
 // Use react-office-viewer for basic formats
 import Viewer, { PdfViewer as RO_PdfViewer, DocxViewer as RO_DocxViewer, SheetViewer as RO_SheetViewer } from 'react-office-viewer';
 
+// Backup DOCX viewer using mammoth directly
+const MammothDocxViewer: React.FC<{ fileUrl: string; fileName: string }> = ({ fileUrl, fileName }) => {
+  const [content, setContent] = useState<string>('');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const loadDocx = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        
+        // Import mammoth dynamically
+        const mammoth = await import('mammoth');
+        
+        // Fetch the file as array buffer
+        const response = await fetch(fileUrl, {
+          method: 'GET',
+          mode: 'cors',
+          credentials: 'omit',
+        });
+        
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        const arrayBuffer = await response.arrayBuffer();
+        
+        // Convert DOCX to HTML using mammoth
+        const result = await mammoth.convertToHtml({ arrayBuffer });
+        
+        setContent(result.value);
+        
+        if (result.messages?.length > 0) {
+          console.warn('Mammoth conversion messages:', result.messages);
+        }
+        
+      } catch (err) {
+        console.error('MammothDocxViewer error:', err);
+        setError('Không thể tải file DOCX bằng trình xem dự phòng.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadDocx();
+  }, [fileUrl]);
+
+  if (loading) {
+    return (
+      <div className="d-flex flex-column justify-content-center align-items-center" style={{ height: '400px' }}>
+        <Spinner animation="border" variant="primary" />
+        <span className="mt-3">Đang tải file DOCX...</span>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <Alert variant="warning">
+        <Alert.Heading>Lỗi trình xem dự phòng</Alert.Heading>
+        <p>{error}</p>
+        <Button variant="primary" href={fileUrl} target="_blank" download>
+          📥 Tải xuống file
+        </Button>
+      </Alert>
+    );
+  }
+
+  return (
+    <div 
+      style={{ 
+        height: '600px', 
+        width: '100%', 
+        overflow: 'auto',
+        padding: '20px',
+        border: '1px solid #dee2e6',
+        borderRadius: '4px',
+        backgroundColor: '#fff'
+      }}
+      dangerouslySetInnerHTML={{ __html: content }}
+    />
+  );
+};
+
 // CSS for react-doc-viewer
 import '@cyntler/react-doc-viewer/dist/index.css';
 
@@ -243,11 +328,15 @@ const FileViewerModal: React.FC<FileViewerModalProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [detectedType, setDetectedType] = useState<string>('');
   const [pdfError, setPdfError] = useState<boolean>(false);
+  const [docxError, setDocxError] = useState<boolean>(false);
+  const [useFallbackDocxViewer, setUseFallbackDocxViewer] = useState<boolean>(false);
 
   useEffect(() => {
     if (!fileUrl) return;
-    // Reset PDF error state when file changes
+    // Reset error states when file changes
     setPdfError(false);
+    setDocxError(false);
+    setUseFallbackDocxViewer(false);
     setError(null);
     
     // Debug: Log the file URL being accessed
@@ -319,11 +408,19 @@ const FileViewerModal: React.FC<FileViewerModalProps> = ({
   // Get the simple file type for viewer selection
   const simpleType = detectedType || mapContentTypeToFileType(fileType || '');
   
-  // Use ComprehensiveDocViewer for all supported document formats
-  const useComprehensiveViewer = ['pdf', 'docx', 'doc', 'pptx', 'ppt', 'xlsx', 'xls'].includes(simpleType);
+  // Use ComprehensiveDocViewer for PDF and presentation formats only
+  // IMPORTANT: Avoid using ComprehensiveDocViewer for DOCX as it may try to use 
+  // external services like view.officeapps which won't work in offline environments
+  const useComprehensiveViewer = ['pdf', 'pptx', 'ppt'].includes(simpleType);
   
-  // Keep react-office-viewer as fallback for specific formats if needed
-  const useOfficeViewer = false; // Disabled in favor of ComprehensiveDocViewer
+  // Use react-office-viewer for Office documents (DOCX, XLSX) for better offline support
+  // This avoids external service dependencies and provides local rendering
+  const useOfficeViewer = ['docx', 'doc', 'xlsx', 'xls'].includes(simpleType);
+
+  // Debug logging
+  console.log('FileViewer - File type detected:', simpleType);
+  console.log('FileViewer - Use comprehensive viewer:', useComprehensiveViewer);
+  console.log('FileViewer - Use office viewer:', useOfficeViewer);
 
   if (!fileUrl) {
     return (
@@ -367,10 +464,48 @@ const FileViewerModal: React.FC<FileViewerModalProps> = ({
                 fileName={fileName}
                 onError={() => setPdfError(true)}
               />
-            ) : simpleType === 'docx' ? (
-              <RO_DocxViewer file={fileUrl} fileName={fileName} />
+            ) : simpleType === 'docx' || simpleType === 'doc' ? (
+              docxError ? (
+                <Alert variant="warning">
+                  <Alert.Heading>Không thể xem trước file DOCX này</Alert.Heading>
+                  <p>Trình xem DOCX cục bộ không thể hiển thị file này. File có thể có định dạng phức tạp hoặc bị hỏng.</p>
+                  <Button 
+                    variant="primary" 
+                    href={fileUrl} 
+                    target="_blank"
+                    download
+                    className="me-2"
+                  >
+                    📥 Tải xuống file
+                  </Button>
+                  <Button 
+                    variant="outline-secondary" 
+                    onClick={() => setDocxError(false)}
+                  >
+                    Thử lại
+                  </Button>
+                </Alert>
+              ) : (
+                <div>
+                  <RO_DocxViewer 
+                    file={fileUrl} 
+                    fileName={fileName}
+                    onError={(err) => {
+                      console.error('DocxViewer error:', err);
+                      setDocxError(true);
+                    }}
+                  />
+                </div>
+              )
             ) : ( // xls/xlsx fallback to sheet viewer
-              <RO_SheetViewer file={fileUrl} fileName={fileName} />
+              <RO_SheetViewer 
+                file={fileUrl} 
+                fileName={fileName}
+                onError={(err) => {
+                  console.error('SheetViewer error:', err);
+                  setError('Không thể xem file Excel. File có thể bị hỏng hoặc không được hỗ trợ.');
+                }}
+              />
             )}
           </div>
         ) : (

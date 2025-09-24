@@ -141,6 +141,28 @@ const messages = defineMessages({
     description: 'Validation message for required correct answer',
   },
 
+  // Upload labels
+  uploadVideoLabel: {
+    id: 'course-authoring.course-unit.add-component.chalix.form.uploadVideo',
+    defaultMessage: 'Upload Video File',
+    description: 'Label for upload video section',
+  },
+  uploadSlideLabel: {
+    id: 'course-authoring.course-unit.add-component.chalix.form.uploadSlide',
+    defaultMessage: 'Upload Slide File',
+    description: 'Label for upload slide section',
+  },
+  externalVideoLabel: {
+    id: 'course-authoring.course-unit.add-component.chalix.form.externalVideo',
+    defaultMessage: 'External Video URL',
+    description: 'Label for external video URL section',
+  },
+  externalSlideLabel: {
+    id: 'course-authoring.course-unit.add-component.chalix.form.externalSlide',
+    defaultMessage: 'External File URL',
+    description: 'Label for external slide URL section',
+  },
+
   // Info messages
   videoSourceInfo: {
     id: 'course-authoring.course-unit.add-component.chalix.info.videoSource',

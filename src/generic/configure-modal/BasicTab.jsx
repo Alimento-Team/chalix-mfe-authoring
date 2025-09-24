@@ -11,6 +11,7 @@ const BasicTab = ({
   courseGraders,
   isSubsection,
   isSelfPaced,
+  showExtraFields = false,
 }) => {
   const intl = useIntl();
 
@@ -28,6 +29,42 @@ const BasicTab = ({
 
   return (
     <>
+      {showExtraFields && (
+        <>
+          <h5 className="mt-4 text-gray-700">Cấu hình khoá học bổ sung</h5>
+          <hr />
+          <Form.Group className="mb-3">
+            <Form.Label>Thời lượng dự kiến (giờ)</Form.Label>
+            <Form.Control
+              type="number"
+              name="estimatedHours"
+              value={values.estimatedHours || ''}
+              onChange={e => setFieldValue('estimatedHours', e.target.value)}
+              placeholder="Ví dụ: 40"
+            />
+          </Form.Group>
+          <Form.Group className="mb-3">
+            <Form.Label>Liên kết lớp học trực tuyến</Form.Label>
+            <Form.Control
+              type="text"
+              name="onlineCourseLink"
+              value={values.onlineCourseLink || ''}
+              onChange={e => setFieldValue('onlineCourseLink', e.target.value)}
+              placeholder="https://..."
+            />
+          </Form.Group>
+          <Form.Group className="mb-3">
+            <Form.Label>Chỉ định giảng viên</Form.Label>
+            <Form.Control
+              type="text"
+              name="instructor"
+              value={values.instructor || ''}
+              onChange={e => setFieldValue('instructor', e.target.value)}
+              placeholder="Email hoặc số điện thoại"
+            />
+          </Form.Group>
+        </>
+      )}
       {!isSelfPaced && (
         <>
           <h5 className="mt-4 text-gray-700"><FormattedMessage {...messages.releaseDateAndTime} /></h5>

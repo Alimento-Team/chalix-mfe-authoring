@@ -12,6 +12,9 @@ const CreateNewCourseForm = ({ handleOnClickCancel }) => {
     org: '',
     number: '',
     run: '',
+    estimatedHours: '',
+    onlineCourseLink: '',
+    instructor: '',
   };
 
   return (

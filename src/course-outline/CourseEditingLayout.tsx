@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useIntl } from '@edx/frontend-platform/i18n';
 import { getAuthenticatedUser } from '@edx/frontend-platform/auth';
+import { useDispatch, useSelector } from 'react-redux';
+import { useCourseConfig } from './hooks/useCourseConfig';
 import {
   Container,
   Button,
@@ -23,10 +25,10 @@ import {
   Quiz as QuizIcon,
   MoreVert as MenuIcon,
 } from '@openedx/paragon/icons';
-import { useDispatch, useSelector } from 'react-redux';
 import { XBlock } from '@src/data/types';
-import { addVideoFile, deleteVideoFile, fetchVideos } from '../files-and-videos/videos-page/data/thunks';
-import { addSlideFile, deleteSlideFile, fetchSlides } from '../files-and-videos/slides-page/data/thunks';
+import { addVideoFile, deleteVideoFile, fetchVideos, fetchUnitVideos } from '../files-and-videos/videos-page/data/thunks';
+import { hasUnitVideos, hasUnitSlides, getUnitVideos } from '../files-and-videos/videos-page/data/selectors';
+import { addSlideFile, deleteSlideFile, fetchSlides, fetchUnitSlides } from '../files-and-videos/slides-page/data/thunks';
 import { RequestStatus } from '../data/constants';
 import { useModels } from '../generic/model-store';
 import FileViewerModal from './file-viewer/FileViewerModal';
@@ -81,18 +83,26 @@ const CourseEditingLayout: React.FC<CourseEditingLayoutProps> = ({
   const [showFileViewerModal, setShowFileViewerModal] = useState(false);
   const [currentSlide, setCurrentSlide] = useState(null);
 
+  // Fetch course configuration from Chalix API
+  const { courseConfig, isLoading: isConfigLoading, error: configError, refetch: refetchConfig } = useCourseConfig(courseId);
+  
   // Get current user information
   const currentUser = getAuthenticatedUser(); // Instructor name should come from course details, not current user
-  const displayInstructorName = instructorName || 'Chưa được chỉ định';
+  
+  // Use course config data if available, otherwise fall back to props or default values
+  const displayInstructorName = courseConfig?.instructor || instructorName || 'Chưa được chỉ định';
+  const displayTotalHours = courseConfig?.estimated_hours || totalHours;
+  const displayOnlineCourseLink = courseConfig?.online_course_link;
 
   // Video click handler
   const handleVideoClick = (selectedUnit: XBlock) => {
+    // Use the unit videos from the selector
     // For now, just open video gallery for the user to select/assign a video
     // In a future iteration, this could open a dedicated video player
-    if (courseVideos.length > 0) {
+    if (unitVideos.length > 0) {
       setSelectedVideoData({
         unit: selectedUnit,
-        videos: courseVideos,
+        videos: unitVideos,
       });
       setShowVideoModal(true);
     }
@@ -171,7 +181,7 @@ const CourseEditingLayout: React.FC<CourseEditingLayoutProps> = ({
 
     const input = document.createElement('input');
     input.type = 'file';
-    input.accept = contentType === 'video' ? 'video/*' : '.ppt,.pptx,.pdf';
+  input.accept = contentType === 'video' ? 'video/*' : '.pdf,.docx';
     input.multiple = false;
 
     input.onchange = async (event) => {
@@ -192,28 +202,41 @@ const CourseEditingLayout: React.FC<CourseEditingLayoutProps> = ({
           if (contentType === 'video') {
             console.log('Uploading video files');
             const videoIds: string[] = []; // Existing video IDs for the course
+            const unitId = selectedSection?.id; // Get the current unit ID
             await dispatch(addVideoFile(
               courseId,
               filesArray,
               videoIds,
               uploadingIdsRef,
+              unitId, // Pass unit ID for unit-specific upload
             ));
             // Refresh video list after successful upload
-            await dispatch(fetchVideos(courseId));
+            if (unitId) {
+              await dispatch(fetchUnitVideos(unitId));
+            } else {
+              await dispatch(fetchVideos(courseId));
+            }
           } else if (contentType === 'slide') {
             console.log('Uploading slide files');
             console.log('courseId:', courseId);
+            console.log('unitId:', selectedSection?.id);
             console.log('uploadingIdsRef.current:', uploadingIdsRef.current);
             const slideIds: string[] = []; // Existing slide IDs for the course
+            const unitId = selectedSection?.id; // Get the current unit ID
             await dispatch(addSlideFile(
               courseId,
               filesArray,
               slideIds,
               uploadingIdsRef,
+              unitId, // Pass unit ID for unit-specific upload
             ));
             console.log('addSlideFile dispatch completed');
             // Refresh slide list after successful upload
-            await dispatch(fetchSlides(courseId));
+            if (unitId) {
+              await dispatch(fetchUnitSlides(unitId));
+            } else {
+              await dispatch(fetchSlides(courseId));
+            }
           }
           setUploadMessage('Tải lên thành công!');
           setTimeout(() => setShowToast(false), 3000);
@@ -255,12 +278,16 @@ const CourseEditingLayout: React.FC<CourseEditingLayoutProps> = ({
 
   // Find selected unit when selectedSectionId changes (using it as selectedUnitId)
   useEffect(() => {
+    console.log('selectedSectionId changed:', selectedSectionId);
     if (selectedSectionId) {
       const unit = allUnits.find(u => u.id === selectedSectionId);
+      console.log('Found unit for selectedSectionId:', unit?.id, unit?.displayName);
       if (unit && (!selectedSection || selectedSection.id !== unit.id)) {
+        console.log('Setting selectedSection to:', unit.id);
         setSelectedSection(unit);
       }
     } else if (allUnits.length > 0 && (!selectedSection || selectedSection.id !== allUnits[0].id)) {
+      console.log('Setting selectedSection to first unit:', allUnits[0].id);
       setSelectedSection(allUnits[0]);
       if (onSectionSelect) {
         onSectionSelect(allUnits[0].id);
@@ -276,16 +303,19 @@ const CourseEditingLayout: React.FC<CourseEditingLayoutProps> = ({
     }
   }, [courseId, dispatch]);
 
-  // Get content items for selected unit (videos, slides, quizzes)
-  // Get all videos for the course (not just unit-specific ones)
-  const allVideos = useSelector(state => state.models?.videos || {});
-  const courseVideos = Object.values(allVideos);
-  const hasVideos = courseVideos.length > 0;
+  // Fetch unit-specific media when selectedSection changes
+  useEffect(() => {
+    console.log('selectedSection changed:', selectedSection?.id, selectedSection?.displayName);
+    if (selectedSection?.id) {
+      console.log('Dispatching fetchUnitVideos for unit:', selectedSection.id);
+      dispatch(fetchUnitVideos(selectedSection.id));
+      console.log('Dispatching fetchUnitSlides for unit:', selectedSection.id);
+      dispatch(fetchUnitSlides(selectedSection.id));
+    }
+  }, [selectedSection?.id, dispatch]);
 
-  // Get all slides for the course (not just unit-specific ones)
-  const allSlides = useSelector(state => state.models?.slides || {});
-  const courseSlides = Object.values(allSlides);
-  const hasSlides = courseSlides.length > 0;
+  // Get content items for selected unit (videos, slides, quizzes)
+  // Now using unit-specific video and slide checking below
 
   const getContentItems = (selectedUnit: XBlock, hasVideos: boolean, hasSlides: boolean) => {
     // For new units, start with empty content that can be uploaded/created
@@ -323,7 +353,29 @@ const CourseEditingLayout: React.FC<CourseEditingLayoutProps> = ({
     ];
   };
 
-  const contentItems = selectedSection ? getContentItems(selectedSection, hasVideos, hasSlides) : [];
+  // Import useSelector for unit-specific video checking
+  const unitHasVideos = useSelector(state => {
+    const result = selectedSection ? hasUnitVideos(state, selectedSection.id) : false;
+    console.log('unitHasVideos selector result:', result, 'for unit:', selectedSection?.id);
+    if (selectedSection?.id) {
+      const allVideos = state.models?.videos || {};
+      const allVideosList = Object.values(allVideos);
+      console.log('All videos in state:', allVideosList.length, allVideosList.map(v => ({ id: v.id, unitId: v.unitId, displayName: v.displayName })));
+      const unitVideos = allVideosList.filter(video => video.unitId === selectedSection.id);
+      console.log('Unit videos found:', unitVideos.length, unitVideos);
+    }
+    return result;
+  });
+  
+  // Get unit videos for the click handler
+  const unitVideos = useSelector(state => selectedSection ? getUnitVideos(state, selectedSection.id) : []);
+  
+  // Temporarily use course-level slide checking until we create unit slide selectors
+  const allSlides = useSelector(state => state.models?.slides || {});
+  const courseSlides = Object.values(allSlides);
+  const unitHasSlides = courseSlides.length > 0;
+  
+  const contentItems = selectedSection ? getContentItems(selectedSection, unitHasVideos, unitHasSlides) : [];
 
   return (
     <div className="course-editing-layout bg-white min-vh-100">
@@ -406,9 +458,26 @@ const CourseEditingLayout: React.FC<CourseEditingLayoutProps> = ({
                         <strong>Giảng viên:</strong> {displayInstructorName}
                       </span>
                     </div>
-                    <div>
+                    <div className="mb-2">
                       <span className="text-muted">
-                        <strong>Tổng số giờ phải khóa học:</strong> {totalHours}h
+                        <strong>Thời lượng dự kiến:</strong> {
+                          isConfigLoading ? 'Đang tải...' : 
+                          displayTotalHours ? `${displayTotalHours} giờ` : 'Chưa đặt'
+                        }
+                      </span>
+                    </div>
+                    <div className="mb-2">
+                      <span className="text-muted">
+                        <strong>Liên kết lớp học trực tuyến:</strong> {/* Add clickable link if present */}
+                        {isConfigLoading ? (
+                          <span style={{ marginLeft: 4 }}>Đang tải...</span>
+                        ) : displayOnlineCourseLink ? (
+                          <a href={displayOnlineCourseLink} target="_blank" rel="noopener noreferrer" style={{ marginLeft: 4 }}>
+                            {displayOnlineCourseLink}
+                          </a>
+                        ) : (
+                          <span style={{ marginLeft: 4 }}>Chưa đặt</span>
+                        )}
                       </span>
                     </div>
                   </div>
@@ -416,11 +485,19 @@ const CourseEditingLayout: React.FC<CourseEditingLayoutProps> = ({
                 <Col xs="auto">
                   <Button
                     variant="primary"
-                    onClick={onConfigurationEdit}
+                    onClick={() => {
+                      // Call the original handler
+                      onConfigurationEdit();
+                      // Refetch course config after a delay to get updated data
+                      setTimeout(() => {
+                        refetchConfig();
+                      }, 1000);
+                    }}
                     size="md"
                     className="fw-bold px-3 py-2"
+                    disabled={isConfigLoading}
                   >
-                    Chỉnh sửa cấu hình
+                    {isConfigLoading ? 'Đang tải...' : 'Chỉnh sửa cấu hình'}
                   </Button>
                 </Col>
               </Row>
@@ -609,15 +686,16 @@ const CourseEditingLayout: React.FC<CourseEditingLayoutProps> = ({
               <p>Chọn một video để phát cho bài học: <strong>{selectedVideoData.unit?.displayName}</strong></p>
               <div className="video-list" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 {selectedVideoData.videos.map((video, index) => (
-                  <Card key={video.edxVideoId || index} className="mb-3">
+                  <Card key={video.id || video.edxVideoId || index} className="mb-3">
                     <Card.Body>
                       <div className="d-flex align-items-center" style={{ gap: '6px' }}>
                         <VideoIcon className="me-3 text-primary" style={{ fontSize: '2rem', margin: '4px' }} />
                         <div className="flex-grow-1" style={{ padding: '10px' }}>
-                          <h6 className="mb-1">{video.displayName || video.clientVideoId || 'Untitled Video'}</h6>
+                          <h6 className="mb-1">{video.displayName || video.fileName || video.clientVideoId || 'Untitled Video'}</h6>
                           <small className="text-muted">
-                            Video ID: {video.edxVideoId}
+                            Video ID: {video.id || video.edxVideoId}
                             {video.duration && ` • Thời lượng: ${Math.floor(video.duration / 60)}:${String(video.duration % 60).padStart(2, '0')}`}
+                            {video.formattedFileSize && ` • Kích thước: ${video.formattedFileSize}`}
                           </small>
                         </div>
                         <div className="d-flex" style={{ gap: '6px' }}>
@@ -636,7 +714,7 @@ const CourseEditingLayout: React.FC<CourseEditingLayoutProps> = ({
                             size="sm"
                             onClick={(e) => {
                               e.stopPropagation();
-                              handleDeleteVideo(video.edxVideoId, video.displayName || video.clientVideoId || 'Untitled Video');
+                              handleDeleteVideo(video.id || video.edxVideoId, video.displayName || video.fileName || video.clientVideoId || 'Untitled Video');
                             }}
                           >
                             Xoá
@@ -656,23 +734,24 @@ const CourseEditingLayout: React.FC<CourseEditingLayoutProps> = ({
 
       {/* Video Player Modal */}
       <StandardModal
-        title={`Phát Video: ${currentVideo?.displayName || currentVideo?.clientVideoId || 'Untitled Video'}`}
+        title={`Phát Video: ${currentVideo?.displayName || currentVideo?.fileName || currentVideo?.clientVideoId || 'Untitled Video'}`}
         isOpen={showVideoPlayerModal}
         onClose={() => setShowVideoPlayerModal(false)}
         size="xl"
       >
         <div style={{ textAlign: 'center', padding: '20px' }}>
-          {currentVideo?.publicUrl || currentVideo?.downloadLink || currentVideo?.url || currentVideo?.clientVideoId ? (
+          {currentVideo?.publicUrl || currentVideo?.downloadLink || currentVideo?.url || currentVideo?.uploadUrl || currentVideo?.clientVideoId ? (
             <video
               controls
               style={{ width: '100%', maxHeight: '500px' }}
               src={
                 currentVideo?.publicUrl
+                || currentVideo?.uploadUrl
                 || currentVideo?.downloadLink
                 || currentVideo?.url
                 || `/cms/api/contentstore/v0/videos/stream/${currentVideo?.clientVideoId || currentVideo?.edxVideoId}`
               }
-              title={currentVideo?.displayName || currentVideo?.clientVideoId}
+              title={currentVideo?.displayName || currentVideo?.fileName || currentVideo?.clientVideoId}
               onError={(e) => {
                 // eslint-disable-next-line no-console
                 console.error('Video error:', e);
@@ -684,7 +763,9 @@ const CourseEditingLayout: React.FC<CourseEditingLayoutProps> = ({
 
                 // Simple fallback logic - try the next available URL
                 const currentSrc = e.target.src;
-                if (currentSrc === currentVideo?.publicUrl && currentVideo?.downloadLink) {
+                if (currentSrc === currentVideo?.publicUrl && currentVideo?.uploadUrl) {
+                  e.target.src = currentVideo.uploadUrl;
+                } else if (currentSrc === currentVideo?.uploadUrl && currentVideo?.downloadLink) {
                   e.target.src = currentVideo.downloadLink;
                 } else if (currentSrc === currentVideo?.downloadLink && currentVideo?.url) {
                   e.target.src = currentVideo.url;
@@ -694,11 +775,13 @@ const CourseEditingLayout: React.FC<CourseEditingLayoutProps> = ({
               }}
               onLoadStart={() => {
                 const videoSrc = currentVideo?.publicUrl
+                  || currentVideo?.uploadUrl
                   || currentVideo?.downloadLink
                   || currentVideo?.url
                   || `/cms/api/contentstore/v0/videos/stream/${currentVideo?.clientVideoId || currentVideo?.edxVideoId}`;
                 console.log('Video load started, URL:', videoSrc);
                 console.log('Video metadata:', {
+                  uploadUrl: currentVideo?.uploadUrl,
                   publicUrl: currentVideo?.publicUrl,
                   downloadLink: currentVideo?.downloadLink,
                   url: currentVideo?.url,
@@ -712,8 +795,9 @@ const CourseEditingLayout: React.FC<CourseEditingLayoutProps> = ({
           ) : (
             <div>
               <p>Không thể phát video này.</p>
-              <p>Video ID: {currentVideo?.edxVideoId}</p>
+              <p>Video ID: {currentVideo?.id || currentVideo?.edxVideoId}</p>
               <p>Status: {currentVideo?.status || 'Unknown'}</p>
+              <p>Upload URL: {currentVideo?.uploadUrl || 'Not available'}</p>
               <p>Download Link: {currentVideo?.downloadLink || 'Not available'}</p>
               <p>Public URL: {currentVideo?.publicUrl || 'Not available'}</p>
               <p>URL: {currentVideo?.url || 'Not available'}</p>
@@ -805,7 +889,13 @@ const CourseEditingLayout: React.FC<CourseEditingLayoutProps> = ({
         <FileViewerModal
           isOpen={showFileViewerModal}
           onClose={() => setShowFileViewerModal(false)}
-          fileUrl={currentSlide.viewer_url || currentSlide.publicUrl || currentSlide.downloadLink || currentSlide.url}
+          fileUrl={
+            currentSlide.viewer_url
+            || currentSlide.publicUrl
+            || currentSlide.uploadUrl
+            || currentSlide.downloadLink
+            || currentSlide.url
+          }
           fileName={currentSlide.displayName || currentSlide.fileName || 'Untitled File'}
           fileType={currentSlide.fileType || currentSlide.contentType}
         />

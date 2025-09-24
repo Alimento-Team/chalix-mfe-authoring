@@ -10,15 +10,15 @@ import {
 } from '../../../generic/model-store';
 import {
   addSlide,
-  deleteSlide,
-  fetchSlideList,
   getSlides,
+  getUnitSlides,
   uploadSlide,
   getSlideDownload,
   deleteSlide as deleteSlideApi,
   sendSlideUploadStatus,
   getSlideUsagePaths as getSlideUsagePathsAPI,
   getAllSlideUsagePaths,
+  finalizeUnitSlide,
 } from './api';
 import {
   setSlideIds,
@@ -116,6 +116,43 @@ export function fetchSlides(courseId) {
   };
 }
 
+export function fetchUnitSlides(unitId) {
+  return async (dispatch) => {
+    dispatch(
+      updateLoadingStatus({ courseId: 'unit', status: RequestStatus.IN_PROGRESS }),
+    );
+    try {
+      const data = await getUnitSlides(unitId);
+      const { results = [] } = data;
+
+      if (isEmpty(results)) {
+        dispatch(
+          updateLoadingStatus({ courseId: 'unit', status: RequestStatus.SUCCESSFUL }),
+        );
+      } else {
+        const parsedSlides = updateSlideValues(results);
+        const slideIds = parsedSlides.map((slide) => slide.id);
+        dispatch(addModels({ modelType: 'slides', models: parsedSlides }));
+        dispatch(setSlideIds({ slideIds }));
+        dispatch(
+          updateLoadingStatus({ courseId: 'unit', status: RequestStatus.SUCCESSFUL }),
+        );
+      }
+    } catch (error) {
+      if (error.response && error.response.status === 403) {
+        dispatch(updateLoadingStatus({ status: RequestStatus.DENIED }));
+      } else {
+        dispatch(
+          updateErrors({ error: 'loading', message: 'Failed to load unit slides' }),
+        );
+        dispatch(
+          updateLoadingStatus({ courseId: 'unit', status: RequestStatus.FAILED }),
+        );
+      }
+    }
+  };
+}
+
 export function resetSlideErrors({ errorType }) {
   return (dispatch) => {
     dispatch(clearErrors({ error: errorType }));
@@ -185,26 +222,28 @@ export function markSlideUploadsInProgressAsFailed({ uploadingIdsRef, courseId }
   };
 }
 
-const addSlideToServer = async (courseId, file, dispatch) => {
-  console.log('addSlideToServer called with:', { courseId, fileName: file.name, fileType: file.type });
+const addSlideToServer = async (courseId, file, dispatch, unitId = null) => {
+  console.log('addSlideToServer called with:', { courseId, fileName: file.name, fileType: file.type, unitId });
   
   const currentController = new AbortController();
   controllers.push(currentController);
   try {
     console.log('Making request to add slide...');
-    const createUrlResponse = await addSlide(courseId, file, currentController);
+  const createUrlResponse = await addSlide(courseId, file, currentController, unitId);
     console.log('addSlide response:', createUrlResponse);
     
     if (createUrlResponse.status < 200 || createUrlResponse.status >= 300) {
       console.error('Bad response status:', createUrlResponse.status);
       dispatch(failAddSlide({ fileName: file.name }));
     }
-    const [{ uploadUrl, slideId }] = camelCaseObject(
-      createUrlResponse.data,
-    ).files;
-    
-    console.log('Extracted from response:', { uploadUrl, slideId });
-    return { uploadUrl, slideId };
+    const responseData = camelCaseObject(createUrlResponse.data);
+    const filesArr = responseData.files || [];
+    const first = filesArr[0] || {};
+    const uploadUrl = first.uploadUrl;
+    const slideId = first.id || first.slideId; // backend returns `id`
+    const publicUrl = first.publicUrl;
+    console.log('Extracted from response:', { uploadUrl, slideId, publicUrl });
+    return { uploadUrl, slideId, publicUrl };
   } catch (error) {
     console.error('Error in addSlideToServer:', error);
     dispatch(failAddSlide({ fileName: file.name }));
@@ -219,6 +258,7 @@ const uploadToBucket = async ({
   uploadingIdsRef,
   slideId,
   dispatch,
+  unitId = null,
 }) => {
   const currentController = new AbortController();
   controllers.push(currentController);
@@ -245,12 +285,48 @@ const uploadToBucket = async ({
         ...currentSlideData,
         status: RequestStatus.SUCCESSFUL,
       };
-      updateSlideUploadStatus(
-        courseId,
-        slideId,
-        'Upload completed',
-        'upload_completed',
-      );
+      // Skip status updates for unit-specific uploads
+      if (!unitId) {
+        updateSlideUploadStatus(
+          courseId,
+          slideId,
+          'Upload completed',
+          'upload_completed',
+        );
+      }
+      // For unit uploads, refresh the unit slide list to update file size and URLs
+      if (unitId) {
+        try {
+          await dispatch(fetchUnitSlides(unitId));
+          const size = file.size || 0;
+          const formatted = (() => {
+            if (size < 1024) return `${size} B`;
+            if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`;
+            if (size < 1024 * 1024 * 1024) return `${(size / (1024 * 1024)).toFixed(1)} MB`;
+            return `${(size / (1024 * 1024 * 1024)).toFixed(2)} GB`;
+          })();
+          // Persist size server-side
+          try {
+            await finalizeUnitSlide(unitId, slideId);
+          } catch (e) {
+            // eslint-disable-next-line no-console
+            console.warn('Finalize unit slide failed (non-blocking):', e?.message || e);
+          }
+          // Update local model with latest size
+          dispatch(updateModel({
+            modelType: 'slides',
+            model: {
+              id: slideId,
+              fileSize: size,
+              formattedFileSize: formatted,
+              unitId,
+            },
+          }));
+        } catch (e) {
+          // eslint-disable-next-line no-console
+          console.warn('Failed to refresh unit slides after upload', e);
+        }
+      }
     }
     return false;
   } catch (error) {
@@ -269,12 +345,15 @@ const uploadToBucket = async ({
         status: RequestStatus.FAILED,
       };
     }
-    updateSlideUploadStatus(
-      courseId,
-      slideId || '',
-      'Upload failed',
-      'upload_failed',
-    );
+    // Skip status updates for unit-specific uploads
+    if (!unitId) {
+      updateSlideUploadStatus(
+        courseId,
+        slideId || '',
+        'Upload failed',
+        'upload_failed',
+      );
+    }
     return true;
   }
 };
@@ -302,13 +381,15 @@ export function addSlideFile(
   files,
   slideIds,
   uploadingIdsRef,
+  unitId = null,
 ) {
   return async (dispatch) => {
     console.log('addSlideFile thunk called with:', {
       courseId,
       files,
       slideIds,
-      uploadingIdsRef: uploadingIdsRef?.current
+      uploadingIdsRef: uploadingIdsRef?.current,
+      unitId
     });
     
     dispatch(
@@ -326,7 +407,7 @@ export function addSlideFile(
         key: `slide_${idx}`,
       });
 
-      const { slideId, uploadUrl } = await addSlideToServer(courseId, file, dispatch);
+  const { slideId, uploadUrl } = await addSlideToServer(courseId, file, dispatch, unitId);
 
       if (uploadUrl && slideId) {
         uploadingIdsRef.current.uploadData = newSlideUploadData({
@@ -337,7 +418,7 @@ export function addSlideFile(
           slideId,
         });
         hasFailure = await uploadToBucket({
-          courseId, uploadUrl, file, uploadingIdsRef, slideId, dispatch,
+          courseId, uploadUrl, file, uploadingIdsRef, slideId, dispatch, unitId,
         });
         // Upload succeeded
         if (!hasFailure) {
@@ -358,15 +439,19 @@ export function addSlideFile(
     }));
 
     try {
-      const response = await fetchSlideList(courseId);
-      const slides = response.previousUploads || [];
-      const newSlides = slides.filter(
-        (slide) => !slideIds.includes(slide.slide_id || slide.slideId),
-      );
-      const newSlideIds = newSlides.map((slide) => slide.slide_id || slide.slideId);
-  const parsedSlides = updateSlideValues(newSlides, true);
-      dispatch(addModels({ modelType: 'slides', models: parsedSlides }));
-      dispatch(setSlideIds({ slideIds: newSlideIds.concat(slideIds) }));
+      if (unitId) {
+        await dispatch(fetchUnitSlides(unitId));
+      } else {
+        const response = await fetchSlideList(courseId);
+        const slides = response.previousUploads || [];
+        const newSlides = slides.filter(
+          (slide) => !slideIds.includes(slide.slide_id || slide.slideId),
+        );
+        const newSlideIds = newSlides.map((slide) => slide.slide_id || slide.slideId);
+        const parsedSlides = updateSlideValues(newSlides, true);
+        dispatch(addModels({ modelType: 'slides', models: parsedSlides }));
+        dispatch(setSlideIds({ slideIds: newSlideIds.concat(slideIds) }));
+      }
     } catch (error) {
       dispatch(
         updateEditStatus({ editType: 'add', status: RequestStatus.FAILED }),

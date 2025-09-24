@@ -60,6 +60,15 @@ const useCreateOrRerunCourse = (initialValues) => {
         intl.formatMessage(messages.disallowedCharsError),
       )
       .matches(noSpaceRule, intl.formatMessage(messages.noSpaceError)),
+    estimatedHours: Yup.number()
+      .typeError('Thời lượng dự kiến phải là số')
+      .min(0, 'Thời lượng dự kiến phải lớn hơn 0')
+      .nullable(),
+    onlineCourseLink: Yup.string()
+      .url('Liên kết lớp học trực tuyến không hợp lệ')
+      .nullable(),
+    instructor: Yup.string()
+      .nullable(),
   }).test(TOTAL_LENGTH_KEY, intl.formatMessage(messages.totalLengthError), function validateTotalLength() {
     const { org, number, run } = this?.options.originalValue || {};
     if ((org?.length || 0) + (number?.length || 0) + (run?.length || 0) > MAX_TOTAL_LENGTH) {

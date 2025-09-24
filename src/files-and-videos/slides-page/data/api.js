@@ -4,16 +4,9 @@ import { camelCaseObject, ensureConfig, getConfig } from '@edx/frontend-platform
 import { getAuthenticatedHttpClient, getHttpClient } from '@edx/frontend-platform/auth';
 import { isEmpty } from 'lodash';
 
-ensureConfig([
-  'STUDIO_BASE_URL',
-], 'Course Apps API service');
-
-export const getApiBaseUrl = () => getConfig().STUDIO_BASE_URL;
-export const getSlidesUrl = (courseId) => `${getApiBaseUrl()}/api/contentstore/v1/slides/${courseId}`;
-export const getCourseSlidesApiUrl = (courseId) => `${getApiBaseUrl()}/slides/${courseId}`;
-
 /**
- * Fetches the course slides for provided course
+ * Fetches the slides for pr/**
+ * Fetches the course slide list for provided course
  * @param {string} courseId
  * @returns {Promise<[{}]>}
  */
@@ -21,6 +14,63 @@ export async function getSlides(courseId) {
   const { data } = await getAuthenticatedHttpClient()
     .get(getSlidesUrl(courseId));
   return camelCaseObject(data);
+}
+
+/**
+ * Fetches unit-specific slides
+ * @param {string} unitId
+ * @returns {Promise<[{}]>}
+ */
+export async function getUnitSlides(unitId) {
+  const { data } = await getAuthenticatedHttpClient()
+    .get(getUnitSlidesUrl(unitId));
+  return camelCaseObject(data);
+}
+
+/*
+ * @param {string} courseId The course ID
+ * @param {File} file The slide file to upload
+ * @param {AbortController} controller Controller for cancelling requests
+ * @param {string} unitId Optional unit ID for unit-specific uploads
+ */
+export async function addSlide(courseId, file, controller, unitId = null) {
+  // Both unit-specific and course-level uploads now use presigned URL approach
+  const postJson = {
+    files: [{ file_name: file.name, content_type: file.type }],
+  };
+
+  if (unitId) {
+    // Use unit-specific API endpoint
+    return getAuthenticatedHttpClient().post(
+      `${getApiBaseUrl()}/api/contentstore/v1/units/${unitId}/slides/`,
+      postJson,
+      { signal: controller?.signal },
+    );
+  }
+  
+  // Use course-level API endpoint
+  return getAuthenticatedHttpClient().post(
+    getCourseSlidesApiUrl(courseId),
+    postJson,
+    { signal: controller?.signal },
+  );
+};
+
+ensureConfig([
+  'STUDIO_BASE_URL',
+], 'Course Apps API service');
+
+export const getApiBaseUrl = () => getConfig().STUDIO_BASE_URL;
+export const getSlidesUrl = (courseId) => `${getApiBaseUrl()}/api/contentstore/v1/slides/${courseId}`;
+export const getUnitSlidesUrl = (unitId) => `${getApiBaseUrl()}/api/contentstore/v1/units/${unitId}/slides/`;
+export const getCourseSlidesApiUrl = (courseId) => `${getApiBaseUrl()}/slides/${courseId}`;
+
+// Finalize unit slide upload to persist metadata (e.g., file size)
+export async function finalizeUnitSlide(unitId, slideId) {
+  return getAuthenticatedHttpClient().post(
+    `${getApiBaseUrl()}/api/contentstore/v1/units/${unitId}/slides/${slideId}/finalize/`,
+    {},
+  );
 }
 
 /**
@@ -44,22 +94,6 @@ export async function deleteSlide(courseId, slideId) {
     .delete(`${getCourseSlidesApiUrl(courseId)}/${slideId}`);
 }
 
-/**
- * Add slide to course.
- * @param {string} courseId Course ID for the course to operate on
- * @param {File} file The slide file to upload
- * @param {AbortController} controller Controller for cancelling requests
- */
-export async function addSlide(courseId, file, controller) {
-  const postJson = {
-    files: [{ file_name: file.name, content_type: file.type }],
-  };
-  return getAuthenticatedHttpClient().post(
-    getCourseSlidesApiUrl(courseId),
-    postJson,
-    { signal: controller?.signal },
-  );
-}
 
 /**
  * Upload slide file to S3 bucket

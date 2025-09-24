@@ -12,8 +12,10 @@ import {
   addThumbnail,
   addVideo,
   deleteVideo,
+  deleteUnitVideo,
   fetchVideoList,
   getVideos,
+  getUnitVideos,
   uploadVideo,
   getDownload,
   deleteTranscript,
@@ -25,6 +27,7 @@ import {
   setTranscriptCredentials,
   setTranscriptPreferences,
   getAllUsagePaths,
+  finalizeUnitVideo,
 } from './api';
 import {
   setVideoIds,
@@ -124,6 +127,58 @@ export function fetchVideos(courseId) {
   };
 }
 
+export function fetchUnitVideos(unitId) {
+  return async (dispatch) => {
+    dispatch(
+      updateLoadingStatus({ courseId: 'unit', status: RequestStatus.IN_PROGRESS }),
+    );
+    try {
+      const data = await getUnitVideos(unitId);
+      const { results = [] } = data;
+      
+      // If no videos, set loading to successful
+      if (isEmpty(results)) {
+        dispatch(
+          updateLoadingStatus({ courseId: 'unit', status: RequestStatus.SUCCESSFUL }),
+        );
+      } else {
+        // Unit videos have a different format than course videos, so handle them separately
+        const parsedVideos = results.map(video => ({
+          ...video,
+          // Add compatibility fields for the video system
+          displayName: video.displayName || video.fileName,
+          dateAdded: video.createdAt || new Date().toISOString(),
+          wrapperType: video.fileType?.includes('mp4') ? 'MP4' : 
+                      video.fileType?.includes('mov') ? 'MOV' : 'Unknown',
+          thumbnail: null, // Unit videos don't have thumbnails yet
+          transcriptStatus: 'notTranscribed', // Unit videos don't have transcripts yet
+          activeStatus: 'active',
+          usageLocations: [],
+        }));
+        
+        console.log('Processed unit videos for Redux:', parsedVideos);
+        const videoIds = parsedVideos.map((video) => video.id);
+        dispatch(addModels({ modelType: 'videos', models: parsedVideos }));
+        dispatch(setVideoIds({ videoIds }));
+        dispatch(
+          updateLoadingStatus({ courseId: 'unit', status: RequestStatus.SUCCESSFUL }),
+        );
+      }
+    } catch (error) {
+      if (error.response && error.response.status === 403) {
+        dispatch(updateLoadingStatus({ status: RequestStatus.DENIED }));
+      } else {
+        dispatch(
+          updateErrors({ error: 'loading', message: 'Failed to load unit videos' }),
+        );
+        dispatch(
+          updateLoadingStatus({ courseId: 'unit', status: RequestStatus.FAILED }),
+        );
+      }
+    }
+  };
+}
+
 export function resetErrors({ errorType }) {
   return (dispatch) => {
     dispatch(clearErrors({ error: errorType }));
@@ -143,7 +198,7 @@ export function updateVideoOrder(courseId, videoIds) {
 }
 
 export function deleteVideoFile(courseId, id) {
-  return async (dispatch) => {
+  return async (dispatch, getState) => {
     dispatch(
       updateEditStatus({
         editType: 'delete',
@@ -151,7 +206,18 @@ export function deleteVideoFile(courseId, id) {
       }),
     );
     try {
-      await deleteVideo(courseId, id);
+      // Get video data to determine if it's a unit video or course video
+      const state = getState();
+      const video = state.models.videos[id];
+      
+      if (video && video.unitId) {
+        // This is a unit video, use unit video deletion API
+        await deleteUnitVideo(video.unitId, id);
+      } else {
+        // This is a course video, use course video deletion API
+        await deleteVideo(courseId, id);
+      }
+      
       dispatch(deleteVideoSuccess({ videoId: id }));
       dispatch(removeModel({ modelType: 'videos', id }));
       dispatch(
@@ -193,16 +259,32 @@ export function markVideoUploadsInProgressAsFailed({ uploadingIdsRef, courseId }
   };
 }
 
-const addVideoToEdxVal = async (courseId, file, dispatch) => {
+const addVideoToEdxVal = async (courseId, file, dispatch, unitId = null) => {
   const currentController = new AbortController();
   controllers.push(currentController);
   try {
-    const createUrlResponse = await addVideo(courseId, file, currentController);
+    const createUrlResponse = await addVideo(courseId, file, currentController, unitId);
     // eslint-disable-next-line
     console.log(`Post Response: ${JSON.stringify(createUrlResponse)}`);
     if (createUrlResponse.status < 200 || createUrlResponse.status >= 300) {
       dispatch(failAddVideo({ fileName: file.name }));
     }
+    
+    // Handle unit-specific API response format
+    if (unitId) {
+      const responseData = camelCaseObject(createUrlResponse.data);
+      // Unit API returns {files: [fileObject], unitId: ..., mediaType: ...}
+      if (responseData.files && responseData.files.length > 0) {
+        const fileData = responseData.files[0]; // Get first file
+        return { 
+          uploadUrl: fileData.uploadUrl, 
+          edxVideoId: fileData.id 
+        };
+      }
+      return { uploadUrl: null, edxVideoId: null };
+    }
+    
+    // Handle course-level API response format
     const [{ uploadUrl, edxVideoId }] = camelCaseObject(
       createUrlResponse.data,
     ).files;
@@ -220,6 +302,7 @@ const uploadToBucket = async ({
   uploadingIdsRef,
   edxVideoId,
   dispatch,
+  unitId = null,
 }) => {
   const currentController = new AbortController();
   controllers.push(currentController);
@@ -246,12 +329,48 @@ const uploadToBucket = async ({
         ...currentVideoData,
         status: RequestStatus.SUCCESSFUL,
       };
-      updateVideoUploadStatus(
-        courseId,
-        edxVideoId,
-        'Upload completed',
-        'upload_completed',
-      );
+      // Skip status updates for unit-specific uploads
+      if (!unitId) {
+        updateVideoUploadStatus(
+          courseId,
+          edxVideoId,
+          'Upload completed',
+          'upload_completed',
+        );
+      }
+      // For unit uploads, refresh the unit video list to update file size and URLs
+      if (unitId) {
+        try {
+          await dispatch(fetchUnitVideos(unitId));
+          // After refreshing, override the size with the actual uploaded file size
+          const size = file.size || 0;
+          const formatted = (() => {
+            if (size < 1024) return `${size} B`;
+            if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`;
+            if (size < 1024 * 1024 * 1024) return `${(size / (1024 * 1024)).toFixed(1)} MB`;
+            return `${(size / (1024 * 1024 * 1024)).toFixed(2)} GB`;
+          })();
+          // Persist size on server (best-effort)
+          try {
+            await finalizeUnitVideo(unitId, edxVideoId);
+          } catch (e) {
+            // eslint-disable-next-line no-console
+            console.warn('Finalize unit video failed (non-blocking):', e?.message || e);
+          }
+          dispatch(updateModel({
+            modelType: 'videos',
+            model: {
+              id: edxVideoId,
+              fileSize: size,
+              formattedFileSize: formatted,
+              unitId,
+            },
+          }));
+        } catch (e) {
+          // eslint-disable-next-line no-console
+          console.warn('Failed to refresh unit videos after upload', e);
+        }
+      }
     }
     return false;
   } catch (error) {
@@ -270,12 +389,15 @@ const uploadToBucket = async ({
         status: RequestStatus.FAILED,
       };
     }
-    updateVideoUploadStatus(
-      courseId,
-      edxVideoId || '',
-      'Upload failed',
-      'upload_failed',
-    );
+    // Skip status updates for unit-specific uploads
+    if (!unitId) {
+      updateVideoUploadStatus(
+        courseId,
+        edxVideoId || '',
+        'Upload failed',
+        'upload_failed',
+      );
+    }
     return true;
   }
 };
@@ -303,6 +425,7 @@ export function addVideoFile(
   files,
   videoIds,
   uploadingIdsRef,
+  unitId = null,
 ) {
   return async (dispatch) => {
     dispatch(
@@ -320,7 +443,7 @@ export function addVideoFile(
         key: `video_${idx}`,
       });
 
-      const { edxVideoId, uploadUrl } = await addVideoToEdxVal(courseId, file, dispatch);
+      const { edxVideoId, uploadUrl } = await addVideoToEdxVal(courseId, file, dispatch, unitId);
 
       if (uploadUrl && edxVideoId) {
         uploadingIdsRef.current.uploadData = newUploadData({
@@ -331,7 +454,7 @@ export function addVideoFile(
           edxVideoId,
         });
         hasFailure = await uploadToBucket({
-          courseId, uploadUrl, file, uploadingIdsRef, edxVideoId, dispatch,
+          courseId, uploadUrl, file, uploadingIdsRef, edxVideoId, dispatch, unitId,
         });
       } else {
         hasFailure = true;

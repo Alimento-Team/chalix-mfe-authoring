@@ -11,6 +11,15 @@ ensureConfig([
 export const getApiBaseUrl = () => getConfig().STUDIO_BASE_URL;
 export const getVideosUrl = (courseId) => `${getApiBaseUrl()}/api/contentstore/v1/videos/${courseId}`;
 export const getCourseVideosApiUrl = (courseId) => `${getApiBaseUrl()}/videos/${courseId}`;
+export const getUnitVideosUrl = (unitId) => `${getApiBaseUrl()}/api/contentstore/v1/units/${unitId}/videos/`;
+
+// Finalize unit video upload to persist metadata (e.g., file size)
+export async function finalizeUnitVideo(unitId, videoId) {
+  return getAuthenticatedHttpClient().post(
+    `${getApiBaseUrl()}/api/contentstore/v1/units/${unitId}/videos/${videoId}/finalize/`,
+    {},
+  );
+}
 
 /**
  * Fetches the course custom pages for provided course
@@ -29,6 +38,17 @@ export async function getVideos(courseId) {
       transcriptionPlans,
     },
   };
+}
+
+/**
+ * Fetches unit-specific videos
+ * @param {string} unitId
+ * @returns {Promise<[{}]>}
+ */
+export async function getUnitVideos(unitId) {
+  const { data } = await getAuthenticatedHttpClient()
+    .get(getUnitVideosUrl(unitId));
+  return camelCaseObject(data);
 }
 
 export async function getAllUsagePaths({ courseId, videoIds }) {
@@ -161,6 +181,16 @@ export async function deleteVideo(courseId, videoId) {
 }
 
 /**
+ * Delete unit video from unit.
+ * @param {string} unitId Unit ID for the unit to operate on
+ * @param {string} videoId Video ID to delete
+ */
+export async function deleteUnitVideo(unitId, videoId) {
+  await getAuthenticatedHttpClient()
+    .delete(`${getApiBaseUrl()}/api/contentstore/v1/units/${unitId}/videos/${videoId}/`);
+}
+
+/**
  * Add thumbnail to video.
  * @param {blockId} courseId Course ID for the course to operate on
 
@@ -174,14 +204,29 @@ export async function addThumbnail({ courseId, videoId, file }) {
 }
 
 /**
- * Add video to course.
+ * Add video to course or unit.
  * @param {blockId} courseId Course ID for the course to operate on
+ * @param {File} file File to upload
+ * @param {AbortController} controller Abort controller for request cancellation
+ * @param {string} unitId Optional unit ID for unit-specific uploads
 
  */
-export async function addVideo(courseId, file, controller) {
+export async function addVideo(courseId, file, controller, unitId = null) {
+  // Both unit-specific and course-level uploads now use presigned URL approach
   const postJson = {
     files: [{ file_name: file.name, content_type: file.type }],
   };
+
+  if (unitId) {
+    // Use unit-specific API endpoint
+    return getAuthenticatedHttpClient().post(
+      `${getApiBaseUrl()}/api/contentstore/v1/units/${unitId}/videos/`,
+      postJson,
+      { signal: controller?.signal },
+    );
+  }
+
+  // Use course-level API endpoint
   return getAuthenticatedHttpClient().post(
     getCourseVideosApiUrl(courseId),
     postJson,

@@ -1,7 +1,10 @@
 import React, { useState, useCallback } from 'react';
 import PropTypes from 'prop-types';
+import { useSelector } from 'react-redux';
 
 import { COMPONENT_TYPES } from '../../../generic/block-type-utils/constants';
+import ChalixContentForm from './ChalixContentForm';
+import { getCourseId } from '../../data/selectors';
 
 const CHALIX_CONTENT_TYPES = {
   [COMPONENT_TYPES.unitVideo]: {
@@ -181,104 +184,14 @@ const OnlineClassForm = ({ onSubmit, onCancel }) => {
   );
 };
 
-const SimpleContentForm = ({ contentType, onSubmit, onCancel }) => {
-  const [title, setTitle] = useState('');
-  const config = CHALIX_CONTENT_TYPES[contentType];
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (title.trim()) {
-      onSubmit({
-        title: title.trim(),
-        contentType,
-      });
-    }
-  };
-
-  return (
-    <div style={{ padding: '20px' }}>
-      <h3 style={{ marginBottom: '20px', color: config.color }}>
-        Cấu Hình {config.displayName}
-      </h3>
-
-      <form onSubmit={handleSubmit}>
-        <div style={{ marginBottom: '20px' }}>
-          <label style={{
-            display: 'block',
-            marginBottom: '8px',
-            fontWeight: 'bold',
-            color: '#333',
-          }}
-          >
-            Tiêu Đề *
-          </label>
-          <input
-            type="text"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder={`Nhập tiêu đề ${config.displayName.toLowerCase()}`}
-            style={{
-              width: '100%',
-              padding: '10px',
-              border: '1px solid #ddd',
-              borderRadius: '4px',
-              fontSize: '14px',
-            }}
-            autoFocus
-            required
-          />
-        </div>
-
-        <div style={{
-          display: 'flex',
-          gap: '10px',
-          justifyContent: 'flex-end',
-          borderTop: '1px solid #eee',
-          paddingTop: '20px',
-          marginTop: '30px',
-        }}
-        >
-          <button
-            type="button"
-            onClick={onCancel}
-            style={{
-              padding: '10px 20px',
-              backgroundColor: '#f8f9fa',
-              border: '1px solid #ddd',
-              borderRadius: '4px',
-              cursor: 'pointer',
-              fontSize: '14px',
-            }}
-          >
-            Hủy
-          </button>
-          <button
-            type="submit"
-            style={{
-              padding: '10px 20px',
-              backgroundColor: config.color,
-              color: 'white',
-              border: 'none',
-              borderRadius: '4px',
-              cursor: 'pointer',
-              fontSize: '14px',
-            }}
-          >
-            Tạo {config.displayName}
-          </button>
-        </div>
-      </form>
-    </div>
-  );
-};
-
 const ChalixContentModal = ({
   isOpen,
   onClose,
   onCreateContent,
-  parentLocator,
+  parentLocator, // This is the unitId
   initialSelectedType = null,
 }) => {
+  const courseId = useSelector(getCourseId);
   const [selectedType, setSelectedType] = useState(initialSelectedType);
   const [step, setStep] = useState(initialSelectedType ? 'configure' : 'select');
 
@@ -427,8 +340,10 @@ const ChalixContentModal = ({
                 onCancel={handleBack}
               />
             ) : (
-              <SimpleContentForm
+              <ChalixContentForm
                 contentType={selectedType}
+                unitId={parentLocator} // parentLocator is the unitId
+                courseId={courseId}
                 onSubmit={handleCreate}
                 onCancel={handleBack}
               />
