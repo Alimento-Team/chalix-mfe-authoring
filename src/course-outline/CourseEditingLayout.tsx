@@ -3,6 +3,7 @@ import { useIntl } from '@edx/frontend-platform/i18n';
 import { getAuthenticatedUser } from '@edx/frontend-platform/auth';
 import { useDispatch, useSelector } from 'react-redux';
 import { useCourseConfig } from './hooks/useCourseConfig';
+import { useQuizData } from './hooks/useQuizData';
 import {
   Container,
   Button,
@@ -11,6 +12,9 @@ import {
   Col,
   Toast,
   StandardModal,
+  Form,
+  FormControl,
+  FormCheck,
 } from '@openedx/paragon';
 import {
   Home as HomeIcon,
@@ -24,6 +28,9 @@ import {
   Description as SlideIcon,
   Quiz as QuizIcon,
   MoreVert as MenuIcon,
+  Add as AddIcon,
+  Delete as DeleteIcon,
+  Visibility as PreviewIcon,
 } from '@openedx/paragon/icons';
 import { XBlock } from '@src/data/types';
 import { addVideoFile, deleteVideoFile, fetchVideos, fetchUnitVideos } from '../files-and-videos/videos-page/data/thunks';
@@ -83,8 +90,28 @@ const CourseEditingLayout: React.FC<CourseEditingLayoutProps> = ({
   const [showFileViewerModal, setShowFileViewerModal] = useState(false);
   const [currentSlide, setCurrentSlide] = useState(null);
 
+  // Add state for quiz functionality
+  const [showQuizModal, setShowQuizModal] = useState(false);
+  const [showQuizListModal, setShowQuizListModal] = useState(false);
+  const [showQuizPreviewModal, setShowQuizPreviewModal] = useState(false);
+  const [selectedQuizData, setSelectedQuizData] = useState(null);
+  const [currentPreviewQuiz, setCurrentPreviewQuiz] = useState(null);
+  const [editingQuizId, setEditingQuizId] = useState(null);
+  const [quizData, setQuizData] = useState({
+    question: '',
+    choices: [''],
+    correctAnswers: [],
+    multipleChoice: false,
+  });
+
   // Fetch course configuration from Chalix API
   const { courseConfig, isLoading: isConfigLoading, error: configError, refetch: refetchConfig } = useCourseConfig(courseId);
+  
+  // Fetch quiz data for the selected unit
+  const { quizzes, loading: quizzesLoading, hasQuizzes, refetch: refetchQuizzes } = useQuizData({
+    courseId,
+    unitId: selectedSection?.id,
+  });
   
   // Get current user information
   const currentUser = getAuthenticatedUser(); // Instructor name should come from course details, not current user
@@ -171,6 +198,289 @@ const CourseEditingLayout: React.FC<CourseEditingLayoutProps> = ({
     setShowFileViewerModal(true); // Open viewer modal
   };
 
+  // Quiz click handler (to view quiz list)
+  const handleQuizClick = (selectedUnit: XBlock) => {
+    if (hasQuizzes && quizzes.length > 0) {
+      setSelectedQuizData({
+        unit: selectedUnit,
+        quizzes: quizzes,
+      });
+      setShowQuizListModal(true);
+    }
+  };
+
+  // Delete quiz handler
+  const handleDeleteQuiz = async (quizId: number, quizTitle: string) => {
+    if (confirm(`Bạn có chắc chắn muốn xoá câu hỏi "${quizTitle}"?`)) {
+      try {
+        const { deleteQuiz } = await import('./data/quizService');
+        const response = await deleteQuiz(quizId);
+        
+        if (response.success) {
+          // Refresh quiz data and update the modal
+          refetchQuizzes();
+          setSelectedQuizData(prevData => ({
+            ...prevData,
+            quizzes: prevData?.quizzes.filter(q => q.id !== quizId) || [],
+          }));
+          alert('Xoá câu hỏi thành công!');
+        } else {
+          throw new Error(response.error || 'Không thể xoá câu hỏi');
+        }
+      } catch (error) {
+        console.error('Failed to delete quiz:', error);
+        alert('Xoá câu hỏi thất bại. Vui lòng thử lại.');
+      }
+    }
+  };
+
+  // Quiz creation handler
+  const handleQuizCreate = () => {
+    resetQuizForm();
+    setShowQuizModal(true);
+  };
+
+  // Quiz form handlers
+  const addChoice = () => {
+    setQuizData(prev => ({
+      ...prev,
+      choices: [...prev.choices, '']
+    }));
+  };
+
+  const removeChoice = (index: number) => {
+    if (quizData.choices.length > 1) {
+      const newChoices = quizData.choices.filter((_, i) => i !== index);
+      const newCorrectAnswers = quizData.correctAnswers.filter(i => i !== index).map(i => i > index ? i - 1 : i);
+      setQuizData(prev => ({
+        ...prev,
+        choices: newChoices,
+        correctAnswers: newCorrectAnswers
+      }));
+    }
+  };
+
+  const updateChoice = (index: number, value: string) => {
+    const newChoices = [...quizData.choices];
+    newChoices[index] = value;
+    setQuizData(prev => ({
+      ...prev,
+      choices: newChoices
+    }));
+  };
+
+  const toggleCorrectAnswer = (index: number) => {
+    let newCorrectAnswers;
+    if (quizData.multipleChoice) {
+      // Multiple choice: toggle answer
+      if (quizData.correctAnswers.includes(index)) {
+        newCorrectAnswers = quizData.correctAnswers.filter(i => i !== index);
+      } else {
+        newCorrectAnswers = [...quizData.correctAnswers, index];
+      }
+    } else {
+      // Single choice: only one answer
+      newCorrectAnswers = quizData.correctAnswers.includes(index) ? [] : [index];
+    }
+    
+    setQuizData(prev => ({
+      ...prev,
+      correctAnswers: newCorrectAnswers
+    }));
+  };
+
+  // Handle quiz preview
+  const handlePreviewQuiz = async (quiz) => {
+    try {
+      // Import the getQuizDetails function dynamically
+      const { getQuizDetails } = await import('./data/quizService');
+      const response = await getQuizDetails(quiz.id);
+      
+      if (response.success && response.quiz?.questions) {
+        setCurrentPreviewQuiz({
+          ...quiz,
+          questions: response.quiz.questions
+        });
+        setShowQuizPreviewModal(true);
+      } else {
+        alert('Không thể tải chi tiết câu hỏi');
+      }
+    } catch (error) {
+      console.error('Error fetching quiz details:', error);
+      alert('Lỗi khi tải chi tiết câu hỏi');
+    }
+  };
+
+  // Handle quiz edit
+  const handleEditQuiz = async (quiz) => {
+    try {
+      // Import the getQuizDetails function dynamically
+      const { getQuizDetails } = await import('./data/quizService');
+      const response = await getQuizDetails(quiz.id);
+      
+      if (response.success && response.quiz?.questions) {
+        const firstQuestion = response.quiz.questions[0];
+        if (firstQuestion) {
+          // Populate the form with existing data
+          setQuizData({
+            question: firstQuestion.question_text,
+            choices: firstQuestion.choices.map(choice => choice.text),
+            correctAnswers: firstQuestion.choices
+              .map((choice, index) => choice.is_correct ? index : -1)
+              .filter(index => index !== -1),
+            multipleChoice: firstQuestion.question_type === 'multiple_choice',
+          });
+          setEditingQuizId(quiz.id);
+          setShowQuizModal(true);
+          setShowQuizListModal(false);
+        }
+      } else {
+        alert('Không thể tải chi tiết câu hỏi để chỉnh sửa');
+      }
+    } catch (error) {
+      console.error('Error fetching quiz details for edit:', error);
+      alert('Lỗi khi tải chi tiết câu hỏi');
+    }
+  };
+
+  // Reset quiz form
+  const resetQuizForm = () => {
+    setQuizData({
+      question: '',
+      choices: [''],
+      correctAnswers: [],
+      multipleChoice: false,
+    });
+    setEditingQuizId(null);
+  };
+
+  const handleQuizSubmit = async () => {
+    // Validate form
+    if (!quizData.question.trim()) {
+      alert('Vui lòng nhập câu hỏi');
+      return;
+    }
+    if (quizData.choices.some(choice => !choice.trim())) {
+      alert('Vui lòng nhập tất cả các lựa chọn');
+      return;
+    }
+    if (quizData.correctAnswers.length === 0) {
+      alert('Vui lòng chọn ít nhất một đáp án đúng');
+      return;
+    }
+
+    if (!selectedSection && !editingQuizId) {
+      alert('Vui lòng chọn chuyên đề để tạo quiz');
+      return;
+    }
+
+    try {
+      const isEditing = editingQuizId !== null;
+      
+      // Show loading state
+      setUploadMessage(isEditing ? 'Đang cập nhật câu hỏi...' : 'Đang tạo câu hỏi...');
+      setShowToast(true);
+
+      console.log('Selected section:', selectedSection);
+      console.log('Course ID:', courseId);
+      console.log('Editing quiz ID:', editingQuizId);
+
+      if (isEditing) {
+        // Update existing quiz
+        const quizUpdateData = {
+          quiz_title: quizData.question.substring(0, 100), // Use first part of question as title
+          quiz_description: '',
+          questions: [{
+            question_text: quizData.question,
+            question_type: quizData.multipleChoice ? 'multiple_choice' as const : 'single_choice' as const,
+            choices: quizData.choices.map((choice, index) => ({
+              text: choice,
+              is_correct: quizData.correctAnswers.includes(index)
+            }))
+          }]
+        };
+
+        console.log('Quiz update payload:', quizUpdateData);
+
+        // Import the updateQuiz function dynamically
+        const { updateQuiz } = await import('./data/quizService');
+        const response = await updateQuiz(editingQuizId, quizUpdateData);
+
+        if (response.success) {
+          setUploadMessage('Cập nhật câu hỏi thành công!');
+          setTimeout(() => setShowToast(false), 3000);
+          
+          // Refresh quiz data to show the updated quiz
+          refetchQuizzes();
+          
+          // Close modal and reset form
+          setShowQuizModal(false);
+          resetQuizForm();
+
+          console.log('Quiz updated successfully:', response.quiz);
+        } else {
+          throw new Error(response.error || 'Không thể cập nhật câu hỏi');
+        }
+      } else {
+        // Create new quiz
+        const quizRequest = {
+          course_key: courseId,
+          parent_locator: selectedSection.id,
+          quiz_title: quizData.question.substring(0, 100), // Use first part of question as title
+          quiz_description: '',
+          questions: [{
+            question_text: quizData.question,
+            question_type: quizData.multipleChoice ? 'multiple_choice' as const : 'single_choice' as const,
+            choices: quizData.choices.map((choice, index) => ({
+              text: choice,
+              is_correct: quizData.correctAnswers.includes(index)
+            }))
+          }]
+        };
+
+        console.log('Quiz request payload:', quizRequest);
+
+        // Import the createQuiz function dynamically to avoid import issues
+        const { createQuiz } = await import('./data/quizService');
+        const response = await createQuiz(quizRequest);
+
+        if (response.success) {
+          setUploadMessage('Tạo câu hỏi thành công!');
+          setTimeout(() => setShowToast(false), 3000);
+          
+          // Refresh quiz data to show the new quiz
+          refetchQuizzes();
+          
+          // Close modal and reset form
+          setShowQuizModal(false);
+          resetQuizForm();
+
+          console.log('Quiz created successfully:', response.quiz);
+        } else {
+          throw new Error(response.error || 'Không thể tạo câu hỏi');
+        }
+      }
+    } catch (error) {
+      console.error('Error with quiz operation:', error);
+      console.error('Error response:', error.response);
+      console.error('Error message:', error.message);
+      
+      let errorMessage = editingQuizId 
+        ? 'Cập nhật câu hỏi thất bại. Vui lòng thử lại.' 
+        : 'Tạo câu hỏi thất bại. Vui lòng thử lại.';
+      if (error.response?.status === 403) {
+        errorMessage = 'Không có quyền tạo câu hỏi cho khóa học này.';
+      } else if (error.response?.status === 400) {
+        errorMessage = `Dữ liệu không hợp lệ: ${error.response?.data?.error || 'Vui lòng kiểm tra lại thông tin.'}`;
+      } else if (error.response?.status >= 500) {
+        errorMessage = 'Lỗi server. Vui lòng thử lại sau.';
+      }
+      
+      setUploadMessage(errorMessage);
+      setTimeout(() => setShowToast(false), 5000);
+    }
+  };
+
   // Video/Slide upload handler
   const handleVideoUpload = async (contentType: 'video' | 'slide') => {
     console.log('handleVideoUpload called with contentType:', contentType);
@@ -181,7 +491,7 @@ const CourseEditingLayout: React.FC<CourseEditingLayoutProps> = ({
 
     const input = document.createElement('input');
     input.type = 'file';
-  input.accept = contentType === 'video' ? 'video/*' : '.pdf,.docx';
+    input.accept = contentType === 'video' ? 'video/*' : '.pdf,.docx';
     input.multiple = false;
 
     input.onchange = async (event) => {
@@ -317,7 +627,7 @@ const CourseEditingLayout: React.FC<CourseEditingLayoutProps> = ({
   // Get content items for selected unit (videos, slides, quizzes)
   // Now using unit-specific video and slide checking below
 
-  const getContentItems = (selectedUnit: XBlock, hasVideos: boolean, hasSlides: boolean) => {
+  const getContentItems = (selectedUnit: XBlock, hasVideos: boolean, hasSlides: boolean, hasQuizzes: boolean) => {
     // For new units, start with empty content that can be uploaded/created
     const unitIndex = allUnits.findIndex(u => u.id === selectedUnit.id) + 1;
     return [
@@ -344,11 +654,13 @@ const CourseEditingLayout: React.FC<CourseEditingLayoutProps> = ({
       {
         type: 'quiz',
         title: 'Trắc nghiệm',
-        subtitle: 'Chưa có câu hỏi trắc nghiệm',
+        subtitle: hasQuizzes ? `Đã tạo ${quizzes.length} câu hỏi trắc nghiệm` : 'Chưa có câu hỏi trắc nghiệm',
         icon: QuizIcon,
         primaryAction: 'Tạo mới',
         secondaryAction: 'Xoá',
-        hasContent: false, // Initially empty
+        hasContent: hasQuizzes,
+        onClick: hasQuizzes ? () => handleQuizClick(selectedUnit) : undefined,
+        onQuizCreate: () => handleQuizCreate(),
       },
     ];
   };
@@ -375,7 +687,7 @@ const CourseEditingLayout: React.FC<CourseEditingLayoutProps> = ({
   const courseSlides = Object.values(allSlides);
   const unitHasSlides = courseSlides.length > 0;
   
-  const contentItems = selectedSection ? getContentItems(selectedSection, unitHasVideos, unitHasSlides) : [];
+  const contentItems = selectedSection ? getContentItems(selectedSection, unitHasVideos, unitHasSlides, hasQuizzes) : [];
 
   return (
     <div className="course-editing-layout bg-white min-vh-100">
@@ -598,6 +910,10 @@ const CourseEditingLayout: React.FC<CourseEditingLayoutProps> = ({
                               if (e.target.tagName !== 'BUTTON' && item.hasContent && item.onClick) {
                                 item.onClick();
                               }
+                            }) : item.type === 'quiz' ? (e => {
+                              if (e.target.tagName !== 'BUTTON' && item.hasContent && item.onClick) {
+                                item.onClick();
+                              }
                             }) : undefined}
                           >
                             <div className="d-flex align-items-center">
@@ -617,7 +933,14 @@ const CourseEditingLayout: React.FC<CourseEditingLayoutProps> = ({
                                 size="sm"
                                 variant="info"
                                 className="me-2 mb-1"
-                                onClick={(item.type === 'video' || item.type === 'slide') ? (e => { e.stopPropagation(); handleVideoUpload(item.type); }) : undefined}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (item.type === 'video' || item.type === 'slide') {
+                                    handleVideoUpload(item.type);
+                                  } else if (item.type === 'quiz' && item.onQuizCreate) {
+                                    item.onQuizCreate();
+                                  }
+                                }}
                                 disabled={isUploading && (item.type === 'video' || item.type === 'slide')}
                               >
                                 {item.primaryAction}
@@ -900,6 +1223,318 @@ const CourseEditingLayout: React.FC<CourseEditingLayoutProps> = ({
           fileType={currentSlide.fileType || currentSlide.contentType}
         />
       )}
+
+      {/* Quiz List Modal */}
+      <StandardModal
+        title="Danh sách câu hỏi trắc nghiệm"
+        isOpen={showQuizListModal}
+        onClose={() => setShowQuizListModal(false)}
+        size="lg"
+      >
+        <div>
+          {selectedQuizData && selectedQuizData.quizzes.length > 0 ? (
+            <div>
+              <p>Câu hỏi trắc nghiệm cho bài học: <strong>{selectedQuizData.unit?.displayName}</strong></p>
+              <div className="quiz-list" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {selectedQuizData.quizzes.map((quiz, index) => (
+                  <Card key={quiz.id || index} className="mb-3">
+                    <Card.Body>
+                      <div className="d-flex align-items-center" style={{ gap: '6px' }}>
+                        <QuizIcon className="me-3 text-primary" style={{ fontSize: '2rem', margin: '4px' }} />
+                        <div className="flex-grow-1" style={{ padding: '10px' }}>
+                          <h6 className="mb-1">{quiz.title || 'Untitled Quiz'}</h6>
+                          <small className="text-muted">
+                            Quiz ID: {quiz.id}
+                            <br />
+                            • Số câu hỏi: {quiz.question_count}
+                            <br />
+                            • Ngày tạo: {new Date(quiz.created_at).toLocaleDateString('vi-VN')}
+                            {quiz.description && (
+                              <>
+                                <br />
+                                • Mô tả: {quiz.description}
+                              </>
+                            )}
+                          </small>
+                        </div>
+                        <div className="d-flex flex-column" style={{ gap: '6px' }}>
+                          <div className="d-flex" style={{ gap: '6px' }}>
+                            <Button
+                              variant="outline-info"
+                              size="sm"
+                              onClick={() => handlePreviewQuiz(quiz)}
+                              className="d-flex align-items-center"
+                            >
+                              <PreviewIcon className="me-1" style={{ fontSize: '14px' }} />
+                              Xem trước
+                            </Button>
+                            <Button
+                              variant="primary"
+                              size="sm"
+                              onClick={() => handleEditQuiz(quiz)}
+                              className="d-flex align-items-center"
+                            >
+                              <EditIcon className="me-1" style={{ fontSize: '14px' }} />
+                              Chỉnh sửa
+                            </Button>
+                          </div>
+                          <Button
+                            variant="danger"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteQuiz(quiz.id, quiz.title || 'Untitled Quiz');
+                            }}
+                            className="d-flex align-items-center justify-content-center"
+                          >
+                            <DeleteIcon className="me-1" style={{ fontSize: '14px' }} />
+                            Xoá
+                          </Button>
+                        </div>
+                      </div>
+                    </Card.Body>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <p>Không có câu hỏi trắc nghiệm nào để hiển thị.</p>
+          )}
+        </div>
+      </StandardModal>
+
+      {/* Quiz Creation/Edit Modal */}
+      <StandardModal
+        title={editingQuizId ? "Chỉnh sửa câu hỏi trắc nghiệm" : "Tạo câu hỏi trắc nghiệm"}
+        isOpen={showQuizModal}
+        onClose={() => {
+          setShowQuizModal(false);
+          resetQuizForm();
+        }}
+        size="lg"
+        footerNode={(
+          <div className="d-flex justify-content-end gap-2">
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setShowQuizModal(false);
+                resetQuizForm();
+              }}
+            >
+              Hủy
+            </Button>
+            <Button
+              variant="primary"
+              onClick={handleQuizSubmit}
+            >
+              {editingQuizId ? 'Cập nhật câu hỏi' : 'Tạo câu hỏi'}
+            </Button>
+          </div>
+        )}
+      >
+        <Form>
+          {/* Question Input */}
+          <Form.Group className="mb-4">
+            <Form.Label className="fw-bold">Câu hỏi</Form.Label>
+            <FormControl
+              as="textarea"
+              rows={3}
+              placeholder="Nhập câu hỏi..."
+              value={quizData.question}
+              onChange={(e) => setQuizData(prev => ({ ...prev, question: e.target.value }))}
+            />
+          </Form.Group>
+
+          {/* Multiple Choice Toggle */}
+          <Form.Group className="mb-4">
+            <FormCheck
+              type="switch"
+              id="multiple-choice-switch"
+              label="Cho phép chọn nhiều đáp án"
+              checked={quizData.multipleChoice}
+              onChange={(e) => {
+                const isMultiple = e.target.checked;
+                setQuizData(prev => ({
+                  ...prev,
+                  multipleChoice: isMultiple,
+                  correctAnswers: isMultiple ? prev.correctAnswers : prev.correctAnswers.slice(0, 1)
+                }));
+              }}
+            />
+          </Form.Group>
+
+          {/* Choices */}
+          <Form.Group className="mb-4">
+            <Form.Label className="fw-bold">
+              Các lựa chọn 
+              <small className="text-muted ms-2">
+                (Tick vào ô bên cạnh để đánh dấu đáp án đúng)
+              </small>
+            </Form.Label>
+            {quizData.choices.map((choice, index) => (
+              <div key={index} className="d-flex align-items-center mb-2">
+                <FormCheck
+                  type={quizData.multipleChoice ? "checkbox" : "radio"}
+                  id={`choice-correct-${index}`}
+                  name="correct-answers"
+                  checked={quizData.correctAnswers.includes(index)}
+                  onChange={() => toggleCorrectAnswer(index)}
+                  className="me-2"
+                />
+                <FormControl
+                  type="text"
+                  placeholder={`Lựa chọn ${index + 1}`}
+                  value={choice}
+                  onChange={(e) => updateChoice(index, e.target.value)}
+                  className="me-2"
+                />
+                {quizData.choices.length > 1 && (
+                  <Button
+                    variant="outline-danger"
+                    size="sm"
+                    onClick={() => removeChoice(index)}
+                  >
+                    <DeleteIcon size="sm" />
+                  </Button>
+                )}
+              </div>
+            ))}
+            <Button
+              variant="outline-primary"
+              size="sm"
+              onClick={addChoice}
+              className="mt-2"
+            >
+              <AddIcon size="sm" className="me-1" />
+              Thêm lựa chọn
+            </Button>
+          </Form.Group>
+
+          {/* Preview */}
+          {quizData.question && (
+            <div className="border rounded p-3 bg-light">
+              <h6 className="fw-bold">Xem trước:</h6>
+              <p><strong>Câu hỏi:</strong> {quizData.question}</p>
+              <p><strong>Loại:</strong> {quizData.multipleChoice ? 'Chọn nhiều đáp án' : 'Chọn một đáp án'}</p>
+              <p><strong>Các lựa chọn:</strong></p>
+              <ul>
+                {quizData.choices.map((choice, index) => (
+                  <li 
+                    key={index} 
+                    className={quizData.correctAnswers.includes(index) ? 'text-success fw-bold' : ''}
+                  >
+                    {choice || `Lựa chọn ${index + 1}`}
+                    {quizData.correctAnswers.includes(index) && ' ✓'}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </Form>
+      </StandardModal>
+
+      {/* Quiz Preview Modal */}
+      <StandardModal
+        title="Xem trước câu hỏi trắc nghiệm"
+        isOpen={showQuizPreviewModal}
+        onClose={() => setShowQuizPreviewModal(false)}
+        size="lg"
+        footerNode={(
+          <div className="d-flex justify-content-between">
+            <Button
+              variant="primary"
+              onClick={() => {
+                setShowQuizPreviewModal(false);
+                if (currentPreviewQuiz) {
+                  handleEditQuiz(currentPreviewQuiz);
+                }
+              }}
+            >
+              Chỉnh sửa câu hỏi
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={() => setShowQuizPreviewModal(false)}
+            >
+              Đóng
+            </Button>
+          </div>
+        )}
+      >
+        {currentPreviewQuiz && (
+          <div>
+            <Card className="mb-3">
+              <Card.Header className="bg-primary text-white">
+                <h5 className="mb-0">{currentPreviewQuiz.title || 'Untitled Quiz'}</h5>
+                <small>
+                  Quiz ID: {currentPreviewQuiz.id} | 
+                  Số câu hỏi: {currentPreviewQuiz.question_count} | 
+                  Ngày tạo: {new Date(currentPreviewQuiz.created_at).toLocaleDateString('vi-VN')}
+                </small>
+              </Card.Header>
+              <Card.Body>
+                {currentPreviewQuiz.description && (
+                  <div className="mb-3">
+                    <strong>Mô tả:</strong> {currentPreviewQuiz.description}
+                  </div>
+                )}
+                
+                {currentPreviewQuiz.questions && currentPreviewQuiz.questions.length > 0 ? (
+                  <div>
+                    {currentPreviewQuiz.questions.map((question, questionIndex) => (
+                      <div key={questionIndex} className="mb-4">
+                        <div className="mb-3">
+                          <strong>Câu hỏi {questionIndex + 1}:</strong>
+                          <p className="mt-2 p-3 bg-light rounded">{question.question_text}</p>
+                        </div>
+                        
+                        <div className="mb-3">
+                          <strong>Loại câu hỏi:</strong> {
+                            question.question_type === 'multiple_choice' 
+                              ? 'Cho phép chọn nhiều đáp án' 
+                              : 'Chọn một đáp án'
+                          }
+                        </div>
+                        
+                        <div>
+                          <strong>Các lựa chọn:</strong>
+                          <div className="mt-2">
+                            {question.choices.map((choice, choiceIndex) => (
+                              <div 
+                                key={choiceIndex} 
+                                className={`p-3 mb-2 border rounded ${choice.is_correct ? 'bg-success text-white border-success' : 'bg-light border-secondary'}`}
+                                style={{ 
+                                  borderWidth: choice.is_correct ? '2px' : '1px',
+                                  boxShadow: choice.is_correct ? '0 2px 4px rgba(0,0,0,0.1)' : 'none'
+                                }}
+                              >
+                                <div className="d-flex align-items-center">
+                                  <span className="me-3" style={{ fontSize: '16px', fontWeight: 'bold', marginRight: '12px' }}>
+                                    {question.question_type === 'multiple_choice' 
+                                      ? (choice.is_correct ? '☑' : '☐') 
+                                      : (choice.is_correct ? '●' : '○')
+                                    }
+                                  </span>
+                                  <span className="flex-grow-1">{choice.text}</span>
+                                  {choice.is_correct && (
+                                    <span className="badge bg-light text-success ms-2 fw-bold">✓ Đáp án đúng</span>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-muted">Không có câu hỏi nào được tìm thấy.</p>
+                )}
+              </Card.Body>
+            </Card>
+          </div>
+        )}
+      </StandardModal>
     </div>
   );
 };
