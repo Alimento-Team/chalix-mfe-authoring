@@ -63,6 +63,7 @@ import { useCourseOutline } from './hooks';
 import messages from './messages';
 import { getTagsExportFile } from './data/api';
 import OutlineAddChildButtons from './OutlineAddChildButtons';
+import CourseEditingLayout from './CourseEditingLayout';
 
 interface CourseOutlineProps {
   courseId: string,
@@ -136,12 +137,22 @@ const CourseOutline = ({ courseId }: CourseOutlineProps) => {
     handleSectionDragAndDrop,
     handleSubsectionDragAndDrop,
     handleUnitDragAndDrop,
+    // Course-level config and edit-course modal handlers
+    courseConfig,
+    isEditCourseModalOpen,
+    openEditCourseModal,
+    closeEditCourseModal,
+    handleEditCourseSubmit,
     errors,
     resetScrollState,
   } = useCourseOutline({ courseId });
 
   // Use `setToastMessage` to show the toast.
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [selectedSectionId, setSelectedSectionId] = useState<string | null>(null);
+  
+  // Check URL parameter to determine which layout to use
+  const useNewLayout = location.pathname.includes('traditional') ? false : true;
 
   useEffect(() => {
     // Wait for the course data to load before exporting tags.
@@ -174,6 +185,44 @@ const CourseOutline = ({ courseId }: CourseOutlineProps) => {
 
   const enableProctoredExams = useSelector(getProctoredExamsFlag);
   const enableTimedExams = useSelector(getTimedExamsFlag);
+
+  // Handle section selection in new layout
+  const handleSectionSelect = (sectionId: string) => {
+    setSelectedSectionId(sectionId);
+  };
+
+  // Handle configuration edit
+  const handleConfigurationEdit = () => {
+    // Try to explicitly open the edit-course modal. Some useToggle implementations
+    // accept a boolean parameter to set the value; call with `true` first, then
+    // fall back to calling the function without args.
+    // eslint-disable-next-line no-console
+    console.debug('[CourseOutline] handleConfigurationEdit invoked, current isEditCourseModalOpen =', isEditCourseModalOpen);
+    try {
+      if (typeof openEditCourseModal === 'function') {
+        // Prefer explicit true to ensure it opens if openEditCourseModal is a setter
+        // eslint-disable-next-line no-console
+        console.debug('[CourseOutline] Calling openEditCourseModal(true)');
+        // @ts-ignore
+        openEditCourseModal(true);
+      } else {
+        // eslint-disable-next-line no-console
+        console.debug('[CourseOutline] openEditCourseModal is not a function, falling back to openConfigureModal');
+        openConfigureModal?.();
+      }
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.error('[CourseOutline] Failed to call openEditCourseModal, falling back', e);
+      try {
+        openEditCourseModal?.();
+      } catch (err) {
+        // final fallback
+        openConfigureModal?.();
+      }
+    }
+  };
+
+
 
   /**
    * Move section to new index
@@ -242,6 +291,11 @@ const CourseOutline = ({ courseId }: CourseOutlineProps) => {
     closeAddLibrarySectionModal();
   }, [closeAddLibrarySectionModal, handleAddSectionFromLibrary.mutateAsync, courseId, courseUsageKey]);
 
+  // Navigate to traditional layout
+  const switchToTraditionalLayout = () => {
+    window.location.href = `/course/${courseId}/traditional`;
+  };
+
   const handleToggleToSimplifiedView = () => {
     // Navigate to simplified course outline view (now the default)
     window.location.href = `/course/${courseId}`;
@@ -280,6 +334,105 @@ const CourseOutline = ({ courseId }: CourseOutlineProps) => {
     );
   }
 
+  // Render new layout if enabled
+  if (useNewLayout) {
+    return (
+      <>
+        <Helmet>
+          <title>{getPageHeadTitle(courseName, intl.formatMessage(messages.headingTitle))}</title>
+        </Helmet>
+        <CourseEditingLayout
+          courseId={courseId}
+          courseName={courseName}
+          sections={sections}
+          selectedSectionId={selectedSectionId || sections[0]?.id}
+          onSectionSelect={handleSectionSelect}
+          onConfigurationEdit={handleConfigurationEdit}
+        />
+        <div className="alert-toast">
+          <ProcessingNotification
+            isShow={
+              isShowProcessingNotification
+              || handleAddUnitFromLibrary.isPending
+              || handleAddSubsectionFromLibrary.isPending
+              || handleAddSectionFromLibrary.isPending
+            }
+            title={processingNotificationTitle || NOTIFICATION_MESSAGES.saving}
+          />
+          <InternetConnectionAlert
+            isFailed={isInternetConnectionAlertFailed}
+            isQueryPending={savingStatus === RequestStatus.PENDING}
+            onInternetConnectionFailed={handleInternetConnectionFailed}
+          />
+        </div>
+        {toastMessage && (
+          <Toast
+            show
+            onClose={() => setToastMessage(null)}
+            data-testid="taxonomy-toast"
+          >
+            {toastMessage}
+          </Toast>
+        )}
+        <PublishModal
+          isOpen={isPublishModalOpen}
+          onClose={closePublishModal}
+          onPublishSubmit={handlePublishItemSubmit}
+        />
+        <ConfigureModal
+          isOpen={isConfigureModalOpen}
+          onClose={handleConfigureModalClose}
+          onConfigureSubmit={handleConfigureItemSubmit}
+          currentItemData={currentItemData}
+          enableProctoredExams={enableProctoredExams}
+          enableTimedExams={enableTimedExams}
+          isSelfPaced={statusBarData.isSelfPaced}
+        />
+        {/* Course-level editing uses the generic ConfigureModal in course modal mode */}
+        <ConfigureModal
+          isOpen={isEditCourseModalOpen}
+          onClose={closeEditCourseModal}
+          onCourseSubmit={handleEditCourseSubmit}
+          isCourseModal
+          currentItemData={{
+            displayName: courseName || '',
+            estimatedHours: courseConfig?.estimated_hours,
+            onlineCourseLink: courseConfig?.online_course_link,
+            instructor: courseConfig?.instructor,
+            start: courseConfig?.start_date || courseConfig?.start || null,
+            end: courseConfig?.end_date || courseConfig?.end || null,
+          }}
+          enableProctoredExams={enableProctoredExams}
+          enableTimedExams={enableTimedExams}
+          isSelfPaced={statusBarData.isSelfPaced}
+        />
+
+        <DeleteModal
+          category={deleteCategory}
+          isOpen={isDeleteModalOpen}
+          close={closeDeleteModal}
+          onDeleteSubmit={handleDeleteItemSubmit}
+        />
+        <StandardModal
+          title={intl.formatMessage(messages.sectionPickerModalTitle)}
+          isOpen={isAddLibrarySectionModalOpen}
+          onClose={closeAddLibrarySectionModal}
+          isOverflowVisible={false}
+          size="xl"
+        >
+          <ComponentPicker
+            showOnlyPublished
+            extraFilter={['block_type = "section"']}
+            componentPickerMode="single"
+            onComponentSelected={handleSelectLibrarySection}
+            visibleTabs={[ContentType.sections]}
+          />
+        </StandardModal>
+      </>
+    );
+  }
+
+  // Render original layout
   return (
     <>
       <Helmet>
@@ -316,20 +469,20 @@ const CourseOutline = ({ courseId }: CourseOutlineProps) => {
             ) : null}
           </TransitionReplace>
 
-          {/* Normal View Header with Toggle */}
+          {/* Traditional View Header with Toggle */}
           <Card className="mb-3">
             <Card.Header>
               <div className="d-flex justify-content-between align-items-center">
                 <div>
-                  <h3 className="mb-1">{intl.formatMessage(messages.normalViewTitle)}</h3>
-                  <p className="text-muted mb-0">{intl.formatMessage(messages.normalViewDescription)}</p>
+                  <h3 className="mb-1">Course Outline - Traditional View</h3>
+                  <p className="text-muted mb-0">Detailed course structure management</p>
                 </div>
                 <Button
                   variant="outline-primary"
                   iconBefore={SettingsIcon}
                   onClick={handleToggleToSimplifiedView}
                 >
-                  Back to Simplified View
+                  Switch to New View
                 </Button>
               </div>
             </Card.Header>

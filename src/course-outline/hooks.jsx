@@ -62,6 +62,8 @@ import {
 } from './data/thunk';
 import { useCreateCourseBlock } from './data/apiHooks';
 import { getCourseItem } from './data/api';
+import { updateCourseDetail } from './data/api';
+import { useCourseConfig } from './hooks/useCourseConfig';
 
 const useCourseOutline = ({ courseId }) => {
   const dispatch = useDispatch();
@@ -101,6 +103,7 @@ const useCourseOutline = ({ courseId }) => {
   const [isHighlightsModalOpen, openHighlightsModal, closeHighlightsModal] = useToggle(false);
   const [isPublishModalOpen, openPublishModal, closePublishModal] = useToggle(false);
   const [isConfigureModalOpen, openConfigureModal, closeConfigureModal] = useToggle(false);
+  const [isEditCourseModalOpen, openEditCourseModal, closeEditCourseModal] = useToggle(false);
   const [isDeleteModalOpen, openDeleteModal, closeDeleteModal] = useToggle(false);
   const [
     isAddLibrarySectionModalOpen,
@@ -332,6 +335,42 @@ const useCourseOutline = ({ courseId }) => {
     dispatch(fetchCourseLaunchQuery({ courseId }));
   }, [courseId]);
 
+  // Course config hook for course-level metadata
+  const { courseConfig, refetch: refetchCourseConfig } = useCourseConfig(courseId);
+
+  const handleEditCourseSubmit = async (values) => {
+    try {
+      const payload = {
+        title: values.displayName || courseConfig?.title || 'Untitled Course',
+        estimated_hours: values.estimated_hours || null,
+        online_course_link: values.online_course_link || '',
+        instructor: values.instructor || '',
+        display_name: values.displayName || undefined,
+        // Map course type/level and short description to backend fields
+        course_type: values.courseType || values.course_type || null,
+        course_level: values.courseLevel || values.course_level || null,
+        short_description: values.shortDescription || values.short_description || null,
+        start_date: values.start_date || null,
+        end_date: values.end_date || null,
+      };
+      await updateCourseDetail(courseId, payload);
+      // Refetch outline and course config for UI
+      dispatch(fetchCourseOutlineIndexQuery(courseId));
+      refetchCourseConfig();
+      closeEditCourseModal();
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error('Failed to update course detail', err);
+      throw err;
+    }
+  };
+
+  // Debug: log when modal open state changes
+  useEffect(() => {
+    // eslint-disable-next-line no-console
+    console.debug('[useCourseOutline] isEditCourseModalOpen =', isEditCourseModalOpen);
+  }, [isEditCourseModalOpen]);
+
   useEffect(() => {
     if (createdOn && moment(new Date(createdOn)).isAfter(moment().subtract(31, 'days'))) {
       dispatch(syncDiscussionsTopics(courseId));
@@ -344,6 +383,7 @@ const useCourseOutline = ({ courseId }) => {
 
   return {
     courseUsageKey: courseStructure?.id,
+    courseConfig,
     courseActions,
     savingStatus,
     sectionsList,
@@ -359,6 +399,10 @@ const useCourseOutline = ({ courseId }) => {
     closePublishModal,
     isConfigureModalOpen,
     openConfigureModal,
+  isEditCourseModalOpen,
+  openEditCourseModal,
+  closeEditCourseModal,
+  handleEditCourseSubmit,
     isAddLibrarySectionModalOpen,
     openAddLibrarySectionModal,
     closeAddLibrarySectionModal,

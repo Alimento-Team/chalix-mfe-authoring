@@ -3,9 +3,15 @@ import { getAuthenticatedHttpClient } from '@edx/frontend-platform/auth';
 import { getConfig } from '@edx/frontend-platform';
 
 interface CourseConfig {
+  title?: string;
+  short_description?: string;
+  course_type?: string;
+  course_level?: string;
   estimated_hours?: number;
   online_course_link?: string;
   instructor?: string;
+  start_date?: string | null;
+  end_date?: string | null;
 }
 
 interface UseCourseConfigReturn {
@@ -44,18 +50,31 @@ export const useCourseConfig = (courseId: string): UseCourseConfigReturn => {
       console.log('Course config response:', response.data);
       
       setCourseConfig({
+        title: response.data.title || '',
+        short_description: response.data.short_description || '',
+        course_type: response.data.course_type || '',
+        course_level: response.data.course_level || '',
         estimated_hours: response.data.estimated_hours,
         online_course_link: response.data.online_course_link,
         instructor: response.data.instructor,
+        // Include canonical start_date (and allow legacy start if present)
+        start_date: response.data.start_date || response.data.start || null,
+        end_date: response.data.end_date || response.data.end || null,
       });
     } catch (err) {
       console.error('Failed to fetch course config:', err);
       
       // Set default empty config on error so UI shows "Chưa đặt"
       setCourseConfig({
+        title: '',
+        short_description: '',
+        course_type: '',
+        course_level: '',
         estimated_hours: 0,
         online_course_link: '',
         instructor: '',
+        start_date: null,
+        end_date: null,
       });
       
       setError(err instanceof Error ? err.message : 'Failed to fetch course configuration');

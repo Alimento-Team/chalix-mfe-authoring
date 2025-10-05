@@ -56,26 +56,28 @@ export const useSettingMenuItems = courseId => {
   const { canAccessAdvancedSettings } = useSelector(getStudioHomeData);
   const waffleFlags = useWaffleFlags();
 
+  // Always point settings links to the internal MFE routes so navigation stays
+  // within the authoring app and we don't redirect users to an external Studio host.
   const items = [
     {
-      href: waffleFlags.useNewScheduleDetailsPage ? `/course/${courseId}/settings/details` : `${studioBaseUrl}/settings/details/${courseId}`,
+      href: `/course/${courseId}/settings/details`,
       title: intl.formatMessage(messages['header.links.scheduleAndDetails']),
     },
     {
-      href: waffleFlags.useNewGradingPage ? `/course/${courseId}/settings/grading` : `${studioBaseUrl}/settings/grading/${courseId}`,
+      href: `/course/${courseId}/settings/grading`,
       title: intl.formatMessage(messages['header.links.grading']),
     },
     {
-      href: waffleFlags.useNewCourseTeamPage ? `/course/${courseId}/course_team` : `${studioBaseUrl}/course_team/${courseId}`,
+      href: `/course/${courseId}/course_team`,
       title: intl.formatMessage(messages['header.links.courseTeam']),
     },
     {
-      href: waffleFlags.useNewGroupConfigurationsPage ? `/course/${courseId}/group_configurations` : `${studioBaseUrl}/group_configurations/${courseId}`,
+      href: `/course/${courseId}/group_configurations`,
       title: intl.formatMessage(messages['header.links.groupConfigurations']),
     },
     ...(canAccessAdvancedSettings === true
       ? [{
-        href: waffleFlags.useNewAdvancedSettingsPage ? `/course/${courseId}/settings/advanced` : `${studioBaseUrl}/settings/advanced/${courseId}`,
+        href: `/course/${courseId}/settings/advanced`,
         title: intl.formatMessage(messages['header.links.advancedSettings']),
       }] : []
     ),

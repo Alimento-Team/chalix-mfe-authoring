@@ -488,3 +488,17 @@ export async function getTagsExportFile(courseId: string, courseName: string) {
 
   window.URL.revokeObjectURL(url);
 }
+
+/**
+ * Update course detail via Chalix dashboard API
+ * @param {string} courseId
+ * @param {object} payload
+ * @returns {Promise<object>}
+ */
+export async function updateCourseDetail(courseId: string, payload: Record<string, any>): Promise<object> {
+  const base = getApiBaseUrl();
+  const encoded = encodeURIComponent(courseId);
+  const url = `${base}/api/chalix/dashboard/course-detail/${encoded}/`;
+  const { data } = await getAuthenticatedHttpClient().patch(url, payload);
+  return data;
+}

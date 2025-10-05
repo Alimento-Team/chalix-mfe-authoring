@@ -14,7 +14,7 @@ import { FilesPage, VideosPage } from './files-and-videos';
 import { AdvancedSettings } from './advanced-settings';
 import { CourseOutline } from './course-outline';
 import SimplifiedCourseOutline from './course-outline/SimplifiedCourseOutline';
-import CourseOutlineNew from './course-outline/CourseOutlineNew';
+
 import ScheduleAndDetails from './schedule-and-details';
 import { GradingSettings } from './grading-settings';
 import CourseTeam from './course-team/CourseTeam';
@@ -54,7 +54,7 @@ const CourseAuthoringRoutes = () => {
       <Routes>
         <Route
           path="/"
-          element={<PageWrap><CourseOutlineNew courseId={courseId} /></PageWrap>}
+          element={<PageWrap><CourseOutline courseId={courseId} /></PageWrap>}
         />
         <Route
           path="traditional"

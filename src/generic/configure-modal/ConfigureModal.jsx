@@ -11,6 +11,7 @@ import {
   Tab,
   Tabs,
 } from '@openedx/paragon';
+import { DatepickerControl, DATEPICKER_TYPES } from '../datepicker-control';
 import { Formik } from 'formik';
 
 import { VisibilityTypes } from '../../data/constants';
@@ -30,8 +31,33 @@ const ConfigureModal = ({
   enableTimedExams = false,
   isXBlockComponent = false,
   isSelfPaced,
+  // New props for course-level editing
+  isCourseModal = false,
+  onCourseSubmit = null,
 }) => {
   const intl = useIntl();
+  // Log isOpen prop changes for debugging modal visibility issues
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  React.useEffect(() => {
+    // eslint-disable-next-line no-console
+    console.debug('[ConfigureModal] isOpen prop changed:', isOpen, 'isCourseModal:', isCourseModal);
+    // Log presence of important imported symbols to catch undefined components
+    // eslint-disable-next-line no-console
+    console.debug('[ConfigureModal] imported symbols presence', {
+      ModalDialog: typeof ModalDialog !== 'undefined',
+      Button: typeof Button !== 'undefined',
+      ActionRow: typeof ActionRow !== 'undefined',
+      Form: typeof Form !== 'undefined',
+      Tab: typeof Tab !== 'undefined',
+      Tabs: typeof Tabs !== 'undefined',
+      DatepickerControl: typeof DatepickerControl !== 'undefined',
+      DATEPICKER_TYPES: typeof DATEPICKER_TYPES !== 'undefined',
+      BasicTab: typeof BasicTab !== 'undefined',
+      VisibilityTab: typeof VisibilityTab !== 'undefined',
+      AdvancedTab: typeof AdvancedTab !== 'undefined',
+      UnitTab: typeof UnitTab !== 'undefined',
+    });
+  }, [isOpen, isCourseModal]);
   const {
     displayName,
     start: sectionStartDate,
@@ -107,6 +133,18 @@ const ConfigureModal = ({
     instructor: currentItemData.instructor || '',
   };
 
+  // Course-level initial values (used when showing the course modal)
+  const courseInitialValues = {
+    displayName: currentItemData.displayName || '',
+    courseType: currentItemData.courseType || '',
+    courseLevel: currentItemData.courseLevel || '',
+    estimatedHours: currentItemData.estimatedHours || '',
+    onlineCourseLink: currentItemData.onlineCourseLink || '',
+    instructor: currentItemData.instructor || '',
+    courseStartDate: currentItemData.start || currentItemData.start_date || null,
+    courseEndDate: currentItemData.end || currentItemData.end_date || null,
+  };
+
   const validationSchema = Yup.object().shape({
     estimatedHours: Yup.number()
       .typeError('Thời lượng dự kiến phải là số')
@@ -146,13 +184,53 @@ const ConfigureModal = ({
     discussionEnabled: Yup.boolean(),
   });
 
+  // Additional validation for course modal (dates ordering)
+  const courseValidationSchema = Yup.object().shape({
+    displayName: Yup.string().required('Tên khóa học là bắt buộc'),
+    courseType: Yup.string().nullable(),
+    courseLevel: Yup.string().nullable(),
+    estimatedHours: Yup.number()
+      .typeError('Thời lượng dự kiến phải là số')
+      .min(0, 'Thời lượng dự kiến phải lớn hơn 0')
+      .nullable(),
+    onlineCourseLink: Yup.string()
+      .url('Liên kết lớp học trực tuyến không hợp lệ')
+      .nullable(),
+    instructor: Yup.string().nullable(),
+    courseStartDate: Yup.mixed().nullable(),
+    courseEndDate: Yup.mixed()
+      .nullable()
+      .test('end-after-start', 'Ngày kết thúc phải sau ngày bắt đầu', function (value) {
+        const { courseStartDate } = this.parent;
+        if (!value || !courseStartDate) return true;
+        return new Date(value) >= new Date(courseStartDate);
+      }),
+  });
+
   const isSubsection = category === COURSE_BLOCK_NAMES.sequential.id;
 
-  const dialogTitle = isXBlockComponent
+  const dialogTitle = isCourseModal
+    ? 'Cấu hình khóa học'
+    : isXBlockComponent
     ? intl.formatMessage(messages.componentTitle, { title: displayName })
     : intl.formatMessage(messages.title, { title: displayName });
 
   const handleSave = (data) => {
+    // If this is the course-level modal, call the provided onCourseSubmit handler
+    if (isCourseModal && typeof onCourseSubmit === 'function') {
+      const payload = {
+        displayName: data.displayName,
+        courseType: data.courseType || null,
+        courseLevel: data.courseLevel || null,
+        estimated_hours: data.estimatedHours === '' ? null : data.estimatedHours,
+        online_course_link: data.onlineCourseLink || null,
+        instructor: data.instructor || null,
+        start_date: data.courseStartDate || null,
+        end_date: data.courseEndDate || null,
+      };
+      onCourseSubmit(payload);
+      return;
+    }
     let { releaseDate } = data;
     // to prevent passing an empty string to the backend
     releaseDate = releaseDate || null;
@@ -198,6 +276,131 @@ const ConfigureModal = ({
   };
 
   const renderModalBody = (values, setFieldValue) => {
+    if (isCourseModal) {
+      // Debug: log types of key components before returning JSX (useEffect runs after render)
+      // eslint-disable-next-line no-console
+      console.log('[ConfigureModal] Rendering course modal body');
+      // eslint-disable-next-line no-console
+      console.log('[ConfigureModal] component types', {
+        Form: typeof Form,
+        FormControl: typeof Form?.Control,
+        FormSelect: typeof Form?.Select,
+        DatepickerControl: typeof DatepickerControl,
+        DATEPICKER_TYPES: typeof DATEPICKER_TYPES,
+      });
+      return (
+        <>
+          <Form.Group className="mb-3">
+            <Form.Label>
+              Tên khóa học <span className="text-danger">*</span>
+            </Form.Label>
+            <Form.Control
+              id="displayName"
+              type="text"
+              name="displayName"
+              value={values.displayName || ''}
+              onChange={e => setFieldValue('displayName', e.target.value)}
+              placeholder="Tên khóa học"
+            />
+          </Form.Group>
+          
+          <div className="row">
+            <div className="col-md-6">
+              <Form.Group className="mb-3">
+                <Form.Label>Loại khóa học</Form.Label>
+                <Form.Control
+                  as="select"
+                  id="courseType"
+                  name="courseType"
+                  value={values.courseType || ''}
+                  onChange={e => setFieldValue('courseType', e.target.value)}
+                >
+                  <option value="">Chọn loại khóa học</option>
+                  <option value="online">Trực tuyến</option>
+                  <option value="offline">Tại lớp</option>
+                  <option value="hybrid">Kết hợp</option>
+                </Form.Control>
+              </Form.Group>
+            </div>
+            <div className="col-md-6">
+              <Form.Group className="mb-3">
+                <Form.Label>Trình độ</Form.Label>
+                <Form.Control
+                  as="select"
+                  id="courseLevel"
+                  name="courseLevel"
+                  value={values.courseLevel || ''}
+                  onChange={e => setFieldValue('courseLevel', e.target.value)}
+                >
+                  <option value="">Chọn trình độ</option>
+                  <option value="beginner">Cơ bản</option>
+                  <option value="intermediate">Trung bình</option>
+                  <option value="advanced">Nâng cao</option>
+                </Form.Control>
+              </Form.Group>
+            </div>
+          </div>
+
+          <Form.Group className="mb-3">
+            <Form.Label>Thời lượng ước tính (giờ)</Form.Label>
+            <Form.Control
+              id="estimatedHours"
+              type="number"
+              name="estimatedHours"
+              value={values.estimatedHours || ''}
+              onChange={e => setFieldValue('estimatedHours', e.target.value)}
+              placeholder="12"
+            />
+          </Form.Group>
+
+          <Form.Group className="mb-3">
+            <Form.Label>Liên kết lớp học trực tuyến</Form.Label>
+            <Form.Control
+              id="onlineCourseLink"
+              type="url"
+              name="onlineCourseLink"
+              value={values.onlineCourseLink || ''}
+              onChange={e => setFieldValue('onlineCourseLink', e.target.value)}
+              placeholder="https://zoom.us/j/..."
+            />
+          </Form.Group>
+
+          <Form.Group className="mb-3">
+            <Form.Label>Chỉ định giảng viên</Form.Label>
+            <Form.Control
+              id="instructor"
+              type="text"
+              name="instructor"
+              value={values.instructor || ''}
+              onChange={e => setFieldValue('instructor', e.target.value)}
+              placeholder="Tên giảng viên"
+            />
+          </Form.Group>
+
+          <Form.Group className="mb-3">
+            <Form.Label>Ngày bắt đầu</Form.Label>
+            <DatepickerControl
+              type={DATEPICKER_TYPES.date}
+              value={values.courseStartDate}
+              label=""
+              controlName="course-start"
+              onChange={(val) => setFieldValue('courseStartDate', val)}
+            />
+          </Form.Group>
+
+          <Form.Group className="mb-3">
+            <Form.Label>Ngày kết thúc</Form.Label>
+            <DatepickerControl
+              type={DATEPICKER_TYPES.date}
+              value={values.courseEndDate}
+              label=""
+              controlName="course-end"
+              onChange={(val) => setFieldValue('courseEndDate', val)}
+            />
+          </Form.Group>
+        </>
+      );
+    }
     switch (category) {
       case COURSE_BLOCK_NAMES.chapter.id:
         return (
@@ -271,32 +474,41 @@ const ConfigureModal = ({
   };
 
   return (
-    <ModalDialog open={isOpen} onClose={onClose} title={dialogTitle} size="lg">
+    <ModalDialog isOpen={isOpen} onClose={onClose} title={dialogTitle} size="lg" style={{ zIndex: 2050 }}>
       <div className="configure-modal">
         <Formik
-          initialValues={initialValues}
+          initialValues={isCourseModal ? courseInitialValues : initialValues}
           onSubmit={handleSave}
-          validationSchema={validationSchema}
+          validationSchema={isCourseModal ? courseValidationSchema : validationSchema}
           validateOnBlur
           validateOnChange
         >
           {({ values, handleSubmit, setFieldValue }) => (
             <>
-              <ModalDialog.Body className="configure-modal__body">
+              {/* Make the body scrollable with a max height so footer can pin */}
+              <ModalDialog.Body
+                className="configure-modal__body"
+                style={{ maxHeight: '60vh', overflowY: 'auto' }}
+              >
                 <Form.Group size="sm" className="form-field">
                   {renderModalBody(values, setFieldValue)}
                 </Form.Group>
               </ModalDialog.Body>
-              <ModalDialog.Footer className="pt-1">
-                <ActionRow>
+              {/* Sticky footer so action row stays visible when body scrolls */}
+              <ModalDialog.Footer
+                className="pt-1 configure-modal__footer"
+                style={{ position: 'sticky', bottom: 0, zIndex: 2060, background: 'var(--pgn-color-bg, #fff)' }}
+              >
+                <ActionRow style={{ alignItems: 'center' }}>
                   <ModalDialog.CloseButton variant="tertiary">
-                    {intl.formatMessage(messages.cancelButton)}
+                    {isCourseModal ? 'Hủy' : intl.formatMessage(messages.cancelButton)}
                   </ModalDialog.CloseButton>
                   <Button
                     data-testid="configure-save-button"
                     onClick={handleSubmit}
+                    variant="primary"
                   >
-                    {intl.formatMessage(messages.saveButton)}
+                    {isCourseModal ? 'Lưu thay đổi' : intl.formatMessage(messages.saveButton)}
                   </Button>
                 </ActionRow>
               </ModalDialog.Footer>
@@ -311,7 +523,7 @@ const ConfigureModal = ({
 ConfigureModal.propTypes = {
   isOpen: PropTypes.bool.isRequired,
   onClose: PropTypes.func.isRequired,
-  onConfigureSubmit: PropTypes.func.isRequired,
+  onConfigureSubmit: PropTypes.func,
   enableProctoredExams: PropTypes.bool,
   enableTimedExams: PropTypes.bool,
   currentItemData: PropTypes.shape({
@@ -363,6 +575,8 @@ ConfigureModal.propTypes = {
   }).isRequired,
   isXBlockComponent: PropTypes.bool,
   isSelfPaced: PropTypes.bool.isRequired,
+  isCourseModal: PropTypes.bool,
+  onCourseSubmit: PropTypes.func,
 };
 
 export default ConfigureModal;

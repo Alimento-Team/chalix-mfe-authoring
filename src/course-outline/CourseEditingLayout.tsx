@@ -39,6 +39,7 @@ import { addSlideFile, deleteSlideFile, fetchSlides, fetchUnitSlides } from '../
 import { RequestStatus } from '../data/constants';
 import { useModels } from '../generic/model-store';
 import FileViewerModal from './file-viewer/FileViewerModal';
+import { updateCourseDetail } from './data/api';
 
 interface CourseEditingLayoutProps {
   courseId: string;
@@ -120,6 +121,49 @@ const CourseEditingLayout: React.FC<CourseEditingLayoutProps> = ({
   const displayInstructorName = courseConfig?.instructor || instructorName || 'Chưa được chỉ định';
   const displayTotalHours = courseConfig?.estimated_hours || totalHours;
   const displayOnlineCourseLink = courseConfig?.online_course_link;
+
+  // Additional course-level display fields
+  const displayCourseType = courseConfig?.courseType || courseConfig?.type || '';
+  const displayCourseLevel = courseConfig?.courseLevel || courseConfig?.level || '';
+  const displayShortDescription = courseConfig?.short_description || courseConfig?.shortDescription || '';
+  const displayStartDateRaw = courseConfig?.start_date || (courseConfig as any)?.start || null;
+  const displayEndDateRaw = courseConfig?.end_date || (courseConfig as any)?.end || null;
+  const displayStartDate = displayStartDateRaw ? new Date(displayStartDateRaw).toLocaleDateString('vi-VN') : null;
+  const displayEndDate = displayEndDateRaw ? new Date(displayEndDateRaw).toLocaleDateString('vi-VN') : null;
+
+  // Helper to determine if course has started. Prefer canonical start_date then legacy start.
+  const isCourseStarted = (cfg?: { start_date?: string | null }) => {
+    if (!cfg) return false;
+    const raw = cfg.start_date || (cfg as any).start || null;
+    if (!raw) return false;
+    const start = new Date(raw);
+    return start <= new Date();
+  };
+
+  // Handler to start the course now by setting start_date to current time
+  const handleStartCourseNow = async () => {
+    try {
+      // Use only the current date (no time) to represent "today" in a backend-friendly format
+      const now = new Date();
+      const yyyy = now.getFullYear();
+      const mm = String(now.getMonth() + 1).padStart(2, '0');
+      const dd = String(now.getDate()).padStart(2, '0');
+      const todayDate = `${yyyy}-${mm}-${dd}`; // e.g. 2025-10-04
+      
+      // Only send start_date - don't include other fields to avoid overwriting them
+      const payload = {
+        start_date: todayDate,
+      };
+      
+      await updateCourseDetail(courseId, payload);
+      // Refresh local config to show updated start date
+      refetchConfig();
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error('Failed to start course now', err);
+      alert('Không thể bắt đầu khóa học ngay bây giờ. Vui lòng thử lại.');
+    }
+  };
 
   // Video click handler
   const handleVideoClick = (selectedUnit: XBlock) => {
@@ -765,46 +809,108 @@ const CourseEditingLayout: React.FC<CourseEditingLayoutProps> = ({
                 <Col>
                   <h5 className="mb-2 text-uppercase font-weight-bold">{courseName}</h5>
                   <div className="course-info-details">
-                    <div className="mb-2">
-                      <span className="text-muted">
-                        <strong>Giảng viên:</strong> {displayInstructorName}
-                      </span>
-                    </div>
-                    <div className="mb-2">
-                      <span className="text-muted">
-                        <strong>Thời lượng dự kiến:</strong> {
-                          isConfigLoading ? 'Đang tải...' : 
-                          displayTotalHours ? `${displayTotalHours} giờ` : 'Chưa đặt'
-                        }
-                      </span>
-                    </div>
-                    <div className="mb-2">
-                      <span className="text-muted">
-                        <strong>Liên kết lớp học trực tuyến:</strong> {/* Add clickable link if present */}
-                        {isConfigLoading ? (
-                          <span style={{ marginLeft: 4 }}>Đang tải...</span>
-                        ) : displayOnlineCourseLink ? (
-                          <a href={displayOnlineCourseLink} target="_blank" rel="noopener noreferrer" style={{ marginLeft: 4 }}>
-                            {displayOnlineCourseLink}
-                          </a>
-                        ) : (
-                          <span style={{ marginLeft: 4 }}>Chưa đặt</span>
-                        )}
-                      </span>
+                    <div className="row g-3">
+                      <div className="col-md-6">
+                        <div className="mb-2 d-flex">
+                          <strong className="me-2 text-muted" style={{ minWidth: 180 }}>Giảng viên:</strong>
+                          <div className="text-body">{displayInstructorName}</div>
+                        </div>
+
+                        <div className="mb-2 d-flex">
+                          <strong className="me-2 text-muted" style={{ minWidth: 180 }}>Thời lượng dự kiến:</strong>
+                          <div className="text-body">{isConfigLoading ? 'Đang tải...' : (displayTotalHours ? `${displayTotalHours} giờ` : 'Chưa đặt')}</div>
+                        </div>
+
+                        <div className="mb-2 d-flex">
+                          <strong className="me-2 text-muted" style={{ minWidth: 180 }}>Loại khoá học:</strong>
+                          <div className="text-body">{displayCourseType || 'Chưa đặt'}</div>
+                        </div>
+                      </div>
+
+                      <div className="col-md-6">
+                        <div className="mb-2 d-flex">
+                          <strong className="me-2 text-muted" style={{ minWidth: 140 }}>Trình độ:</strong>
+                          <div className="text-body">{displayCourseLevel || 'Chưa đặt'}</div>
+                        </div>
+
+                        <div className="mb-2 d-flex">
+                          <strong className="me-2 text-muted" style={{ minWidth: 140 }}>Ngày bắt đầu:</strong>
+                          <div className="text-body">{displayStartDate || 'Chưa đặt'}</div>
+                        </div>
+
+                        <div className="mb-2 d-flex">
+                          <strong className="me-2 text-muted" style={{ minWidth: 140 }}>Ngày kết thúc:</strong>
+                          <div className="text-body">{displayEndDate || 'Chưa đặt'}</div>
+                        </div>
+                      </div>
+
+                      {/* Online link moved to bottom spanning full width */}
+                      <div className="col-12">
+                        <div className="mb-2 d-flex align-items-start">
+                          <strong className="me-2 text-muted" style={{ minWidth: 140 }}>Liên kết lớp học trực tuyến:</strong>
+                          <div className="text-body" style={{ marginLeft: 8 }}>
+                            {isConfigLoading ? (
+                              <span>Đang tải...</span>
+                            ) : displayOnlineCourseLink ? (
+                              <a href={displayOnlineCourseLink} target="_blank" rel="noopener noreferrer">
+                                {displayOnlineCourseLink}
+                              </a>
+                            ) : (
+                              <span>Chưa đặt</span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="col-12">
+                        <div className="mb-2 d-flex">
+                          <strong className="me-2 text-muted" style={{ minWidth: 140 }}>Mô tả ngắn:</strong>
+                          <div className="text-body">{displayShortDescription || 'Chưa có'}</div>
+                        </div>
+                      </div>
+
+                      {/* Course Start Status Badge */}
+                      { (courseConfig?.start_date || (courseConfig as any)?.start) && (
+                        <div className="col-12" style={{ marginTop: 6 }}>
+                          <span style={{ marginRight: 8, fontWeight: 600, color: '#333' }}>Trạng thái Khoá học:</span>
+                          <span
+                            style={{
+                              background: isCourseStarted(courseConfig) ? '#e6f4ea' : '#f5f5f5',
+                              color: isCourseStarted(courseConfig) ? '#2e7d32' : '#616161',
+                              borderRadius: '6px',
+                              padding: '6px 12px',
+                              fontWeight: 600,
+                              fontSize: 14,
+                              display: 'inline-block',
+                            }}
+                          >
+                            {isCourseStarted(courseConfig) ? 'Đã bắt đầu' : 'Chưa bắt đầu'}
+                          </span>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </Col>
-                <Col xs="auto">
+              </Row>
+
+              {/* Buttons moved to bottom of card */}
+              <Row className="mt-3">
+                <Col />
+                <Col xs="auto" className="d-flex align-items-center" style={{ gap: '12px' }}>
                   <Button
+                    id="start-course-btn"
+                    variant="outline-secondary"
+                    onClick={handleStartCourseNow}
+                    size="md"
+                    disabled={isConfigLoading || isCourseStarted(courseConfig)}
+                  >
+                    Bắt đầu khoá học
+                  </Button>
+                  <Button
+                    id="edit-course-config-btn"
+                    data-testid="edit-course-config-btn"
                     variant="primary"
-                    onClick={() => {
-                      // Call the original handler
-                      onConfigurationEdit();
-                      // Refetch course config after a delay to get updated data
-                      setTimeout(() => {
-                        refetchConfig();
-                      }, 1000);
-                    }}
+                    onClick={onConfigurationEdit}
                     size="md"
                     className="fw-bold px-3 py-2"
                     disabled={isConfigLoading}

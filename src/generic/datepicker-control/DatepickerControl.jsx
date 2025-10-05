@@ -52,6 +52,7 @@ const DatepickerControl = ({
           />
         )}
         <DatePicker
+          id={controlName}
           name={controlName}
           selected={formattedDate}
           disabled={readonly}
