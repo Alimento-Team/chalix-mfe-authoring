@@ -12,6 +12,12 @@ interface CourseConfig {
   instructor?: string;
   start_date?: string | null;
   end_date?: string | null;
+  final_evaluation_type?: string; // "Nộp bài thu hoạch" | "Làm bài trắc nghiệm" | ""
+  units?: Array<{
+    title: string;
+    name: string;
+    description?: string;
+  }>;
 }
 
 interface UseCourseConfigReturn {
@@ -60,6 +66,8 @@ export const useCourseConfig = (courseId: string): UseCourseConfigReturn => {
         // Include canonical start_date (and allow legacy start if present)
         start_date: response.data.start_date || response.data.start || null,
         end_date: response.data.end_date || response.data.end || null,
+        final_evaluation_type: response.data.final_evaluation_type || '',
+        units: response.data.units || [],
       });
     } catch (err) {
       console.error('Failed to fetch course config:', err);
@@ -75,6 +83,8 @@ export const useCourseConfig = (courseId: string): UseCourseConfigReturn => {
         instructor: '',
         start_date: null,
         end_date: null,
+        final_evaluation_type: '',
+        units: [],
       });
       
       setError(err instanceof Error ? err.message : 'Failed to fetch course configuration');

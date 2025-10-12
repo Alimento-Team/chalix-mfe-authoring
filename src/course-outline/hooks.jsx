@@ -342,16 +342,16 @@ const useCourseOutline = ({ courseId }) => {
     try {
       const payload = {
         title: values.displayName || courseConfig?.title || 'Untitled Course',
-        estimated_hours: values.estimated_hours || null,
-        online_course_link: values.online_course_link || '',
-        instructor: values.instructor || '',
         display_name: values.displayName || undefined,
-        // Map course type/level and short description to backend fields
-        course_type: values.courseType || values.course_type || null,
-        course_level: values.courseLevel || values.course_level || null,
-        short_description: values.shortDescription || values.short_description || null,
-        start_date: values.start_date || null,
-        end_date: values.end_date || null,
+        short_description: values.shortDescription || '',
+        course_type: values.courseType || '',
+        course_level: values.courseLevel || '',
+        estimated_hours: values.estimatedHours || null,
+        online_course_link: values.onlineCourseLink || '',
+        instructor: values.instructor || '',
+        start_date: values.courseStartDate || null,
+        end_date: values.courseEndDate || null,
+        final_evaluation_type: values.finalEvaluationType || '',
       };
       await updateCourseDetail(courseId, payload);
       // Refetch outline and course config for UI

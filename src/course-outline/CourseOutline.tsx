@@ -396,11 +396,16 @@ const CourseOutline = ({ courseId }: CourseOutlineProps) => {
           isCourseModal
           currentItemData={{
             displayName: courseName || '',
+            courseType: courseConfig?.course_type || '',
+            courseLevel: courseConfig?.course_level || '',
+            shortDescription: courseConfig?.short_description || '',
             estimatedHours: courseConfig?.estimated_hours,
             onlineCourseLink: courseConfig?.online_course_link,
             instructor: courseConfig?.instructor,
             start: courseConfig?.start_date || courseConfig?.start || null,
             end: courseConfig?.end_date || courseConfig?.end || null,
+            finalEvaluationType: courseConfig?.final_evaluation_type || '',
+            courseUnits: courseConfig?.units || [],
           }}
           enableProctoredExams={enableProctoredExams}
           enableTimedExams={enableTimedExams}

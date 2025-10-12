@@ -31,6 +31,8 @@ import {
   Add as AddIcon,
   Delete as DeleteIcon,
   Visibility as PreviewIcon,
+  Upload as UploadIcon,
+  Settings as SettingsIcon,
 } from '@openedx/paragon/icons';
 import { XBlock } from '@src/data/types';
 import { addVideoFile, deleteVideoFile, fetchVideos, fetchUnitVideos } from '../files-and-videos/videos-page/data/thunks';
@@ -398,6 +400,29 @@ const CourseEditingLayout: React.FC<CourseEditingLayoutProps> = ({
     setEditingQuizId(null);
   };
 
+  // 🎯 Final Evaluation Handlers
+  const handleProjectQuestionConfig = () => {
+    console.log('🎯 Opening project question configuration');
+    // TODO: Open modal for setting project question
+    alert('Chức năng cấu hình câu hỏi bài thu hoạch sẽ được phát triển');
+  };
+
+  const handleQuizExcelUpload = () => {
+    console.log('🎯 Opening quiz Excel upload');
+    // TODO: Open file picker for Excel upload
+    alert('Chức năng tải lên file Excel câu hỏi trắc nghiệm sẽ được phát triển');
+  };
+
+  const handleEvaluationConfig = () => {
+    console.log('🎯 Opening evaluation configuration');
+    // Navigate to course settings
+    if (onConfigurationEdit) {
+      onConfigurationEdit();
+    } else {
+      alert('Vào cài đặt khóa học để chọn hình thức kiểm tra cuối khóa');
+    }
+  };
+
   const handleQuizSubmit = async () => {
     // Validate form
     if (!quizData.question.trim()) {
@@ -665,6 +690,20 @@ const CourseEditingLayout: React.FC<CourseEditingLayoutProps> = ({
       dispatch(fetchUnitVideos(selectedSection.id));
       console.log('Dispatching fetchUnitSlides for unit:', selectedSection.id);
       dispatch(fetchUnitSlides(selectedSection.id));
+      
+      // 🎯 Check if this is a final evaluation unit and show unit editor URL
+      if (selectedSection?.displayName?.includes('kiểm tra cuối')) {
+        console.log('🎯 FINAL EVALUATION UNIT DETECTED!');
+        console.log('🎯 To edit this unit, navigate to: http://apps.local.openedx.io:2001/container/' + selectedSection.id);
+        console.log('🎯 Current URL is course outline - you need to click the unit to access the editor');
+        
+        // Show a prominent alert with navigation button
+        setTimeout(() => {
+          if (confirm('🎯 Final Evaluation Unit Detected!\n\nThis unit requires the special Final Evaluation Editor.\n\nClick OK to navigate to the unit editor, or Cancel to stay on the course outline.')) {
+            window.location.href = 'http://apps.local.openedx.io:2001/container/' + selectedSection.id;
+          }
+        }, 1000);
+      }
     }
   }, [selectedSection?.id, dispatch]);
 
@@ -731,7 +770,72 @@ const CourseEditingLayout: React.FC<CourseEditingLayoutProps> = ({
   const courseSlides = Object.values(allSlides);
   const unitHasSlides = courseSlides.length > 0;
   
-  const contentItems = selectedSection ? getContentItems(selectedSection, unitHasVideos, unitHasSlides, hasQuizzes) : [];
+  // 🎯 Final Evaluation Detection
+  const isFinalEvaluationUnit = !!(
+    selectedSection?.displayName?.includes('Kiểm tra cuối') || 
+    selectedSection?.displayName?.includes('kiểm tra cuối')
+  );
+
+  // Get final evaluation content items based on course configuration
+  const getFinalEvaluationItems = (selectedUnit: XBlock) => {
+    const evaluationType = courseConfig?.final_evaluation_type || '';
+    const isProjectSubmission = evaluationType.includes('Nộp bài thu hoạch');
+    const isMultipleChoice = evaluationType.includes('Làm bài trắc nghiệm');
+
+    console.log('🎯 Final Evaluation Type:', { 
+      evaluationType, 
+      isProjectSubmission, 
+      isMultipleChoice,
+      courseType: courseConfig?.course_type,
+      fullConfig: courseConfig 
+    });
+
+    if (isProjectSubmission) {
+      return [
+        {
+          type: 'project-question',
+          title: 'Câu hỏi bài thu hoạch',
+          subtitle: 'Thiết lập câu hỏi cho học viên nộp bài thu hoạch',
+          icon: EditIcon,
+          primaryAction: 'Cấu hình câu hỏi',
+          secondaryAction: 'Xem trước',
+          hasContent: false, // TODO: Check if question is set
+          onProjectConfig: handleProjectQuestionConfig,
+        }
+      ];
+    } else if (isMultipleChoice) {
+      return [
+        {
+          type: 'quiz-upload',
+          title: 'Tải lên đề thi trắc nghiệm',
+          subtitle: 'Upload file Excel chứa câu hỏi trắc nghiệm',
+          icon: UploadIcon,
+          primaryAction: 'Tải lên Excel',
+          secondaryAction: 'Xem trước',
+          hasContent: false, // TODO: Check if quiz file uploaded
+          onQuizUpload: handleQuizExcelUpload,
+        }
+      ];
+    } else {
+      return [
+        {
+          type: 'evaluation-config',
+          title: 'Cấu hình kiểm tra cuối khóa',
+          subtitle: 'Chưa thiết lập hình thức kiểm tra. Vào cài đặt khóa học để chọn "Nộp bài thu hoạch" hoặc "Làm bài trắc nghiệm"',
+          icon: SettingsIcon,
+          primaryAction: 'Cài đặt khóa học',
+          hasContent: false,
+          onEvaluationConfig: handleEvaluationConfig,
+        }
+      ];
+    }
+  };
+
+  const contentItems = selectedSection ? (
+    isFinalEvaluationUnit 
+      ? getFinalEvaluationItems(selectedSection)
+      : getContentItems(selectedSection, unitHasVideos, unitHasSlides, hasQuizzes)
+  ) : [];
 
   return (
     <div className="course-editing-layout bg-white min-vh-100">
@@ -978,16 +1082,16 @@ const CourseEditingLayout: React.FC<CourseEditingLayoutProps> = ({
               <Card className="content-details-card">
                 {selectedSection && (
                   <>
-                    <Card.Header className="bg-info text-white">
+                    <Card.Header className={isFinalEvaluationUnit ? "bg-warning text-dark" : "bg-info text-white"}>
                       <Row className="align-items-center">
                         <Col xs="auto">
                           <MenuIcon size="md" className="me-2" />
                         </Col>
                         <Col>
                           <h6 className="mb-1">
-                            {selectedSection.displayName}
+                            {isFinalEvaluationUnit ? "🎯 " : ""}{selectedSection.displayName}
                           </h6>
-                          <small>Nội dung chuyên đề</small>
+                          <small>{isFinalEvaluationUnit ? "Kiểm tra cuối khóa" : "Nội dung chuyên đề"}</small>
                         </Col>
                         <Col xs="auto">
                           <Button size="sm" className="bg-success border-success">
@@ -1045,6 +1149,12 @@ const CourseEditingLayout: React.FC<CourseEditingLayoutProps> = ({
                                     handleVideoUpload(item.type);
                                   } else if (item.type === 'quiz' && item.onQuizCreate) {
                                     item.onQuizCreate();
+                                  } else if (item.type === 'project-question' && item.onProjectConfig) {
+                                    item.onProjectConfig();
+                                  } else if (item.type === 'quiz-upload' && item.onQuizUpload) {
+                                    item.onQuizUpload();
+                                  } else if (item.type === 'evaluation-config' && item.onEvaluationConfig) {
+                                    item.onEvaluationConfig();
                                   }
                                 }}
                                 disabled={isUploading && (item.type === 'video' || item.type === 'slide')}

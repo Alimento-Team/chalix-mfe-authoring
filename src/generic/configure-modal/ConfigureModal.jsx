@@ -136,6 +136,7 @@ const ConfigureModal = ({
   // Course-level initial values (used when showing the course modal)
   const courseInitialValues = {
     displayName: currentItemData.displayName || '',
+    shortDescription: currentItemData.shortDescription || '',
     courseType: currentItemData.courseType || '',
     courseLevel: currentItemData.courseLevel || '',
     estimatedHours: currentItemData.estimatedHours || '',
@@ -143,6 +144,8 @@ const ConfigureModal = ({
     instructor: currentItemData.instructor || '',
     courseStartDate: currentItemData.start || currentItemData.start_date || null,
     courseEndDate: currentItemData.end || currentItemData.end_date || null,
+    finalEvaluationType: currentItemData.finalEvaluationType || '',
+    courseUnits: currentItemData.courseUnits || [],
   };
 
   const validationSchema = Yup.object().shape({
@@ -187,6 +190,7 @@ const ConfigureModal = ({
   // Additional validation for course modal (dates ordering)
   const courseValidationSchema = Yup.object().shape({
     displayName: Yup.string().required('Tên khóa học là bắt buộc'),
+    shortDescription: Yup.string().nullable(),
     courseType: Yup.string().nullable(),
     courseLevel: Yup.string().nullable(),
     estimatedHours: Yup.number()
@@ -205,15 +209,14 @@ const ConfigureModal = ({
         if (!value || !courseStartDate) return true;
         return new Date(value) >= new Date(courseStartDate);
       }),
+    finalEvaluationType: Yup.string().nullable(),
   });
 
   const isSubsection = category === COURSE_BLOCK_NAMES.sequential.id;
 
   const dialogTitle = isCourseModal
-    ? 'Cấu hình khóa học'
-    : isXBlockComponent
-    ? intl.formatMessage(messages.componentTitle, { title: displayName })
-    : intl.formatMessage(messages.title, { title: displayName });
+    ? 'Cài đặt Khóa học - COMPREHENSIVE MODAL'
+    : intl.formatMessage(messages.modalTitle);
 
   const handleSave = (data) => {
     // If this is the course-level modal, call the provided onCourseSubmit handler
@@ -304,6 +307,19 @@ const ConfigureModal = ({
             />
           </Form.Group>
           
+          <Form.Group className="mb-3">
+            <Form.Label>Mô tả ngắn gọn</Form.Label>
+            <Form.Control
+              as="textarea"
+              id="shortDescription"
+              name="shortDescription"
+              value={values.shortDescription || ''}
+              onChange={e => setFieldValue('shortDescription', e.target.value)}
+              placeholder="Mô tả ngắn gọn về khóa học..."
+              rows={3}
+            />
+          </Form.Group>
+          
           <div className="row">
             <div className="col-md-6">
               <Form.Group className="mb-3">
@@ -316,9 +332,12 @@ const ConfigureModal = ({
                   onChange={e => setFieldValue('courseType', e.target.value)}
                 >
                   <option value="">Chọn loại khóa học</option>
-                  <option value="online">Trực tuyến</option>
-                  <option value="offline">Tại lớp</option>
-                  <option value="hybrid">Kết hợp</option>
+                  <option value="Lý luận chính trị">Lý luận chính trị</option>
+                  <option value="Chuyên môn nghiệp vụ">Chuyên môn nghiệp vụ</option>
+                  <option value="Kỹ năng mềm">Kỹ năng mềm</option>
+                  <option value="Ngoại ngữ">Ngoại ngữ</option>
+                  <option value="Tin học">Tin học</option>
+                  <option value="Khác">Khác</option>
                 </Form.Control>
               </Form.Group>
             </div>
@@ -333,9 +352,13 @@ const ConfigureModal = ({
                   onChange={e => setFieldValue('courseLevel', e.target.value)}
                 >
                   <option value="">Chọn trình độ</option>
-                  <option value="beginner">Cơ bản</option>
-                  <option value="intermediate">Trung bình</option>
-                  <option value="advanced">Nâng cao</option>
+                  <option value="Cơ bản">Cơ bản</option>
+                  <option value="Trung bình">Trung bình</option>
+                  <option value="Nâng cao">Nâng cao</option>
+                  <option value="Chuyên ngành">Chuyên ngành</option>
+                  <option value="Đại học">Đại học</option>
+                  <option value="Thạc sĩ">Thạc sĩ</option>
+                  <option value="Tiến sĩ">Tiến sĩ</option>
                 </Form.Control>
               </Form.Group>
             </div>
@@ -398,6 +421,35 @@ const ConfigureModal = ({
               onChange={(val) => setFieldValue('courseEndDate', val)}
             />
           </Form.Group>
+
+          <Form.Group className="mb-3">
+            <Form.Label>Loại bài kiểm tra cuối khoá</Form.Label>
+            <Form.Control
+              as="select"
+              id="finalEvaluationType"
+              name="finalEvaluationType"
+              value={values.finalEvaluationType || ''}
+              onChange={e => setFieldValue('finalEvaluationType', e.target.value)}
+            >
+              <option value="">Chọn loại bài kiểm tra</option>
+              <option value="project">Nộp bài thu hoạch</option>
+              <option value="quiz">Làm bài trắc nghiệm</option>
+            </Form.Control>
+          </Form.Group>
+
+          {/* Display course units/topics if available */}
+          {values.courseUnits && values.courseUnits.length > 0 && (
+            <Form.Group className="mb-3">
+              <Form.Label>Chuyên đề</Form.Label>
+              <div className="border rounded p-3 bg-light">
+                {values.courseUnits.map((unit, index) => (
+                  <div key={index} className="mb-2">
+                    <strong>{unit.title || unit.name}</strong>
+                  </div>
+                ))}
+              </div>
+            </Form.Group>
+          )}
         </>
       );
     }

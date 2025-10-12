@@ -33,10 +33,16 @@ import XBlockContainerIframe from './xblock-container-iframe';
 import MoveModal from './move-modal';
 import IframePreviewLibraryXBlockChanges from './preview-changes';
 import CourseUnitHeaderActionsSlot from '../plugin-slots/CourseUnitHeaderActionsSlot';
+import { FinalEvaluationEditor } from './final-evaluation';
+import { useCourseConfig } from '../course-outline/hooks/useCourseConfig';
 
 const CourseUnit = ({ courseId }) => {
   const { blockId } = useParams();
   const intl = useIntl();
+  
+  // Debug: Confirm CourseUnit component is loading
+  console.log('🎯 CourseUnit component loaded with courseId:', courseId, 'blockId:', blockId);
+  
   const {
     courseUnit,
     isLoading,
@@ -73,6 +79,32 @@ const CourseUnit = ({ courseId }) => {
     addComponentTemplateData,
   } = useCourseUnit({ courseId, blockId });
   const layoutGrid = useLayoutGrid(unitCategory, isUnitLibraryType);
+
+  // Get course configuration to detect final evaluation
+  const { courseConfig } = useCourseConfig(courseId);
+
+  // Detect final evaluation unit by title or course config
+  const isFinalEvaluation = !!(
+    (unitTitle && unitTitle.toLowerCase().includes('kiểm tra cuối')) ||
+    (courseConfig && courseConfig.course_type && courseConfig.course_type.includes('Hình thức kiểm tra cuối khoá'))
+  );
+  
+  // Debugging: log detection info
+  // eslint-disable-next-line no-console
+  console.log('🎯 CourseUnit Detection:', {
+    unitTitle,
+    courseType: courseConfig?.course_type,
+    isFinalEvaluation,
+    courseConfig
+  });
+
+  // Add visual indicator in browser title if final evaluation is detected
+  useEffect(() => {
+    if (isFinalEvaluation) {
+      document.title = `🎯 FINAL EVAL - ${unitTitle}`;
+      console.log('🎯 Final Evaluation mode activated for unit:', unitTitle);
+    }
+  }, [isFinalEvaluation, unitTitle]);
 
   const readOnly = !!courseUnit.readOnly;
 
@@ -190,8 +222,8 @@ const CourseUnit = ({ courseId }) => {
               showPasteUnit={showPasteUnit}
             />
           )}
-          <Layout {...layoutGrid}>
-            <Layout.Element>
+          <Layout {...(isFinalEvaluation ? { cols: 1, gap: 0 } : layoutGrid)}>
+            <Layout.Element cols={isFinalEvaluation ? 1 : undefined}>
               {currentlyVisibleToStudents && (
                 <AlertMessage
                   className="course-unit__alert"
@@ -206,24 +238,36 @@ const CourseUnit = ({ courseId }) => {
                   courseId={courseId}
                 />
               )}
-              <XBlockContainerIframe
-                courseId={courseId}
-                blockId={blockId}
-                isUnitVerticalType={isUnitVerticalType}
-                unitXBlockActions={unitXBlockActions}
-                courseVerticalChildren={courseVerticalChildren.children}
-                handleConfigureSubmit={handleConfigureSubmit}
-              />
-              {!readOnly && (
-                <AddComponent
-                  parentLocator={blockId}
-                  isSplitTestType={isSplitTestType}
-                  isUnitVerticalType={isUnitVerticalType}
-                  handleCreateNewCourseXBlock={handleCreateNewCourseXBlock}
-                  addComponentTemplateData={addComponentTemplateData}
+              {isFinalEvaluation ? (
+                // For final evaluation units we render a dedicated editor layout
+                <FinalEvaluationEditor
+                  courseId={courseId}
+                  blockId={blockId}
+                  unitTitle={unitTitle}
                 />
+              ) : (
+                // Default layout for non-final units
+                <>
+                  <XBlockContainerIframe
+                    courseId={courseId}
+                    blockId={blockId}
+                    isUnitVerticalType={isUnitVerticalType}
+                    unitXBlockActions={unitXBlockActions}
+                    courseVerticalChildren={courseVerticalChildren.children}
+                    handleConfigureSubmit={handleConfigureSubmit}
+                  />
+                  {!readOnly && (
+                    <AddComponent
+                      parentLocator={blockId}
+                      isSplitTestType={isSplitTestType}
+                      isUnitVerticalType={isUnitVerticalType}
+                      handleCreateNewCourseXBlock={handleCreateNewCourseXBlock}
+                      addComponentTemplateData={addComponentTemplateData}
+                    />
+                  )}
+                </>
               )}
-              {!readOnly && showPasteXBlock && canPasteComponent && isUnitVerticalType && (
+              {!isFinalEvaluation && !readOnly && showPasteXBlock && canPasteComponent && isUnitVerticalType && (
                 <PasteComponent
                   clipboardData={sharedClipboardData}
                   onClick={
@@ -240,17 +284,19 @@ const CourseUnit = ({ courseId }) => {
               />
               <IframePreviewLibraryXBlockChanges />
             </Layout.Element>
-            <Layout.Element>
-              <CourseAuthoringUnitSidebarSlot
-                courseId={courseId}
-                blockId={blockId}
-                unitTitle={unitTitle}
-                xBlocks={courseVerticalChildren.children}
-                readOnly={readOnly}
-                isUnitVerticalType={isUnitVerticalType}
-                isSplitTestType={isSplitTestType}
-              />
-            </Layout.Element>
+            {!isFinalEvaluation && (
+              <Layout.Element>
+                <CourseAuthoringUnitSidebarSlot
+                  courseId={courseId}
+                  blockId={blockId}
+                  unitTitle={unitTitle}
+                  xBlocks={courseVerticalChildren.children}
+                  readOnly={readOnly}
+                  isUnitVerticalType={isUnitVerticalType}
+                  isSplitTestType={isSplitTestType}
+                />
+              </Layout.Element>
+            )}
           </Layout>
         </section>
       </Container>
