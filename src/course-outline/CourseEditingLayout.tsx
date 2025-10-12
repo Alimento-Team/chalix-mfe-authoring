@@ -119,6 +119,10 @@ const CourseEditingLayout: React.FC<CourseEditingLayoutProps> = ({
   
   // Use course config data if available, otherwise fall back to props or default values
   const displayInstructorName = courseConfig?.instructor || instructorName || 'Chưa được chỉ định';
+  // Display current authenticated user's full name in the header (prefer profile.name, then first/last name, then username/email)
+  const displayUserName = currentUser
+    ? (currentUser.profile?.name || `${(currentUser.first_name || '').trim()} ${(currentUser.last_name || '').trim()}`.trim() || currentUser.username || currentUser.email)
+    : '';
   const displayTotalHours = courseConfig?.estimated_hours || totalHours;
   const displayOnlineCourseLink = courseConfig?.online_course_link;
 
@@ -848,7 +852,7 @@ const CourseEditingLayout: React.FC<CourseEditingLayoutProps> = ({
                 </h6>
               </Col>
               <Col lg={4} xs="auto" className="d-flex align-items-center justify-content-end">
-                <span className="me-4">dungdl</span>
+                <span className="me-4">{displayUserName || ''}</span>
                 <div className="course-editing-user-avatar bg-light rounded-circle p-2 me-3">
                   <PersonIcon size="sm" className="text-primary" />
                 </div>
