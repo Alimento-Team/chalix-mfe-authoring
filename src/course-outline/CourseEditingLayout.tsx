@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useIntl } from '@edx/frontend-platform/i18n';
 import { getAuthenticatedUser } from '@edx/frontend-platform/auth';
 import { useDispatch, useSelector } from 'react-redux';
 import { useCourseConfig } from './hooks/useCourseConfig';
@@ -64,7 +63,6 @@ const CourseEditingLayout: React.FC<CourseEditingLayoutProps> = ({
   onSectionSelect,
   onConfigurationEdit,
 }) => {
-  const intl = useIntl();
   const dispatch = useDispatch();
   const [selectedSection, setSelectedSection] = useState<XBlock | null>(null);
   const uploadingIdsRef = useRef<{ uploadData: Record<string, any>; uploadCount: number }>({ 

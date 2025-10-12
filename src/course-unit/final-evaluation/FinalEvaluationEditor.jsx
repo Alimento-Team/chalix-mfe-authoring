@@ -5,14 +5,10 @@ import {
 } from '@openedx/paragon';
 import { getConfig } from '@edx/frontend-platform';
 import { getAuthenticatedHttpClient } from '@edx/frontend-platform/auth';
-import { useIntl } from '@edx/frontend-platform/i18n';
-import messages from './messages';
 import './FinalEvaluationEditor.scss';
 
 const FinalEvaluationEditor = ({ courseId, blockId, unitTitle }) => {
   console.log('🎓 FinalEvaluationEditor rendering with:', { courseId, blockId, unitTitle });
-  
-  const intl = useIntl();
   const [evaluationData, setEvaluationData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);

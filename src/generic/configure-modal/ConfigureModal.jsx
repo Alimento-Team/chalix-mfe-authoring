@@ -216,7 +216,7 @@ const ConfigureModal = ({
 
   const dialogTitle = isCourseModal
     ? 'Cài đặt Khóa học - COMPREHENSIVE MODAL'
-    : intl.formatMessage(messages.modalTitle);
+    : intl.formatMessage(messages.title, { title: currentItemData?.displayName || 'Item' });
 
   const handleSave = (data) => {
     // If this is the course-level modal, call the provided onCourseSubmit handler
