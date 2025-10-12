@@ -91,6 +91,15 @@ const CourseEditingLayout: React.FC<CourseEditingLayoutProps> = ({
   const [showFileViewerModal, setShowFileViewerModal] = useState(false);
   const [currentSlide, setCurrentSlide] = useState(null);
 
+  // Final evaluation: project question modal state
+  const [showProjectModal, setShowProjectModal] = useState(false);
+  const [projectQuestion, setProjectQuestion] = useState('');
+
+  // Final evaluation: quiz upload modal state
+  const [showQuizUploadModal, setShowQuizUploadModal] = useState(false);
+  const [selectedQuizFile, setSelectedQuizFile] = useState<File | null>(null);
+  const [quizUploadPreview, setQuizUploadPreview] = useState<any>(null);
+
   // Add state for quiz functionality
   const [showQuizModal, setShowQuizModal] = useState(false);
   const [showQuizListModal, setShowQuizListModal] = useState(false);
@@ -404,15 +413,16 @@ const CourseEditingLayout: React.FC<CourseEditingLayoutProps> = ({
 
   // 🎯 Final Evaluation Handlers
   const handleProjectQuestionConfig = () => {
+    // Open modal to edit project question
     console.log('🎯 Opening project question configuration');
-    // TODO: Open modal for setting project question
-    alert('Chức năng cấu hình câu hỏi bài thu hoạch sẽ được phát triển');
+    setProjectQuestion(courseConfig?.final_evaluation_project_question || '');
+    setShowProjectModal(true);
   };
 
   const handleQuizExcelUpload = () => {
     console.log('🎯 Opening quiz Excel upload');
-    // TODO: Open file picker for Excel upload
-    alert('Chức năng tải lên file Excel câu hỏi trắc nghiệm sẽ được phát triển');
+    setSelectedQuizFile(null);
+    setShowQuizUploadModal(true);
   };
 
   const handleEvaluationConfig = () => {
@@ -422,6 +432,85 @@ const CourseEditingLayout: React.FC<CourseEditingLayoutProps> = ({
       onConfigurationEdit();
     } else {
       alert('Vào cài đặt khóa học để chọn hình thức kiểm tra cuối khóa');
+    }
+  };
+
+  // Save project question (final evaluation - Nộp bài thu hoạch)
+  const saveProjectQuestion = async () => {
+    try {
+      setIsUploading(true);
+      await updateCourseDetail(courseId, { final_evaluation_project_question: projectQuestion });
+      // refresh config
+      refetchConfig();
+      setShowProjectModal(false);
+      setUploadMessage('Lưu câu hỏi thành công!');
+      setShowToast(true);
+      setTimeout(() => setShowToast(false), 2500);
+    } catch (err) {
+      console.error('Failed to save project question', err);
+      setUploadMessage('Lưu câu hỏi thất bại.');
+      setShowToast(true);
+      setTimeout(() => setShowToast(false), 3000);
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  // Upload quiz Excel file for final evaluation (Làm bài trắc nghiệm)
+  const uploadQuizExcel = async () => {
+    if (!selectedQuizFile) {
+      alert('Vui lòng chọn file Excel để tải lên');
+      return;
+    }
+
+    try {
+      setIsUploading(true);
+      setUploadMessage('Đang xử lý file Excel...');
+      setShowToast(true);
+
+      // Parse Excel file locally
+      const { parseQuizExcel, createIndividualQuizzes } = await import('./data/excelQuizParser');
+      const parseResult = await parseQuizExcel(selectedQuizFile);
+
+      if (!parseResult.success) {
+        throw new Error(parseResult.error);
+      }
+
+      setUploadMessage('Đang tạo câu hỏi trắc nghiệm...');
+      setQuizUploadPreview({
+        summary: parseResult.summary,
+        sampleQuestions: parseResult.quizzes.slice(0, 3) // Show first 3 questions as preview
+      });
+
+      // Create quizzes using existing quiz service
+      const { createQuiz } = await import('./data/quizService');
+      const results = await createIndividualQuizzes(
+        parseResult.quizzes,
+        courseId,
+        selectedSection?.id,
+        createQuiz
+      );
+
+      const successCount = results.filter(r => r.success).length;
+      const failCount = results.filter(r => !r.success).length;
+
+      if (successCount > 0) {
+        setUploadMessage(`Tạo thành công ${successCount} câu hỏi${failCount > 0 ? `, ${failCount} câu thất bại` : ''}!`);
+        // Refresh quiz data to show new quizzes
+        refetchQuizzes();
+      } else {
+        throw new Error('Không thể tạo câu hỏi nào');
+      }
+
+      setTimeout(() => setShowToast(false), 3000);
+      // Keep modal open to show results
+    } catch (err) {
+      console.error('Quiz Excel processing failed:', err);
+      setUploadMessage(`Xử lý thất bại: ${err.message}`);
+      setShowToast(true);
+      setTimeout(() => setShowToast(false), 5000);
+    } finally {
+      setIsUploading(false);
     }
   };
 
@@ -780,9 +869,22 @@ const CourseEditingLayout: React.FC<CourseEditingLayoutProps> = ({
 
   // Get final evaluation content items based on course configuration
   const getFinalEvaluationItems = (selectedUnit: XBlock) => {
-    const evaluationType = courseConfig?.final_evaluation_type || '';
-    const isProjectSubmission = evaluationType.includes('Nộp bài thu hoạch');
-    const isMultipleChoice = evaluationType.includes('Làm bài trắc nghiệm');
+    const evaluationTypeRaw = courseConfig?.final_evaluation_type || '';
+    const evaluationType = String(evaluationTypeRaw).toLowerCase();
+
+    // Support both backend short keys ('project' | 'quiz') and Vietnamese labels
+    const isProjectSubmission = (
+      evaluationType.includes('project') ||
+      evaluationType.includes('nộp') ||
+      evaluationType.includes('thu hoạch') ||
+      evaluationType.includes('nộp bài thu hoạch')
+    );
+    const isMultipleChoice = (
+      evaluationType.includes('quiz') ||
+      evaluationType.includes('trắc nghiệm') ||
+      evaluationType.includes('làm bài trắc nghiệm') ||
+      evaluationType.includes('làm bài')
+    );
 
     console.log('🎯 Final Evaluation Type:', { 
       evaluationType, 
@@ -793,29 +895,37 @@ const CourseEditingLayout: React.FC<CourseEditingLayoutProps> = ({
     });
 
     if (isProjectSubmission) {
+      const hasProjectQuestion = !!(courseConfig?.final_evaluation_project_question && courseConfig.final_evaluation_project_question.trim());
+      
       return [
         {
           type: 'project-question',
           title: 'Câu hỏi bài thu hoạch',
-          subtitle: 'Thiết lập câu hỏi cho học viên nộp bài thu hoạch',
+          subtitle: hasProjectQuestion 
+            ? 'Đã thiết lập câu hỏi bài thu hoạch - Bấm để xem/chỉnh sửa'
+            : 'Thiết lập câu hỏi cho học viên nộp bài thu hoạch',
           icon: EditIcon,
-          primaryAction: 'Cấu hình câu hỏi',
+          primaryAction: hasProjectQuestion ? 'Chỉnh sửa câu hỏi' : 'Cấu hình câu hỏi',
           secondaryAction: 'Xem trước',
-          hasContent: false, // TODO: Check if question is set
+          hasContent: hasProjectQuestion,
           onProjectConfig: handleProjectQuestionConfig,
         }
       ];
     } else if (isMultipleChoice) {
+      const hasQuizQuestions = hasQuizzes && quizzes.length > 0;
+      
       return [
         {
           type: 'quiz-upload',
           title: 'Tải lên đề thi trắc nghiệm',
-          subtitle: 'Upload file Excel chứa câu hỏi trắc nghiệm',
+          subtitle: hasQuizQuestions
+            ? `Đã tạo ${quizzes.length} câu hỏi trắc nghiệm - Bấm để xem danh sách`
+            : 'Upload file Excel chứa câu hỏi trắc nghiệm',
           icon: UploadIcon,
-          primaryAction: 'Tải lên Excel',
-          secondaryAction: 'Xem trước',
-          hasContent: false, // TODO: Check if quiz file uploaded
-          onQuizUpload: handleQuizExcelUpload,
+          primaryAction: hasQuizQuestions ? 'Xem câu hỏi' : 'Tải lên Excel',
+          secondaryAction: 'Tải template',
+          hasContent: hasQuizQuestions,
+          onQuizUpload: hasQuizQuestions ? () => handleQuizClick(selectedUnit) : handleQuizExcelUpload,
         }
       ];
     } else {
@@ -1269,6 +1379,148 @@ const CourseEditingLayout: React.FC<CourseEditingLayoutProps> = ({
             </div>
           ) : (
             <p>Không có video nào để hiển thị.</p>
+          )}
+        </div>
+      </StandardModal>
+
+      {/* Project Question Modal (Final Evaluation: Nộp bài thu hoạch) */}
+      <StandardModal
+        title="Cấu hình câu hỏi bài thu hoạch"
+        isOpen={showProjectModal}
+        onClose={() => setShowProjectModal(false)}
+        size="lg"
+        footerNode={(
+          <div className="d-flex justify-content-end gap-2">
+            <Button variant="secondary" onClick={() => setShowProjectModal(false)}>Hủy</Button>
+            <Button variant="primary" onClick={saveProjectQuestion} disabled={isUploading}>Lưu</Button>
+          </div>
+        )}
+      >
+        <Form>
+          <Form.Group className="mb-3">
+            <Form.Label className="fw-bold">Câu hỏi cho học viên (Hướng dẫn nộp bài)</Form.Label>
+            <FormControl
+              as="textarea"
+              rows={5}
+              placeholder="Nhập nội dung câu hỏi / hướng dẫn nộp bài..."
+              value={projectQuestion}
+              onChange={(e) => setProjectQuestion((e.target as HTMLTextAreaElement).value)}
+            />
+            <Form.Text className="text-muted">Học viên sẽ thấy câu hỏi này trong LMS và có thể tải lên file docx hoặc pptx làm bài tập.</Form.Text>
+          </Form.Group>
+        </Form>
+      </StandardModal>
+
+      {/* Quiz Upload Modal (Final Evaluation: Làm bài trắc nghiệm) */}
+      <StandardModal
+        title="Tải lên đề thi trắc nghiệm (Excel)"
+        isOpen={showQuizUploadModal}
+        onClose={() => {
+          setShowQuizUploadModal(false);
+          setQuizUploadPreview(null);
+          setSelectedQuizFile(null);
+        }}
+        size="lg"
+        footerNode={(
+          <div className="d-flex justify-content-between">
+            <div>
+              <Button variant="outline-info" size="sm" onClick={async () => {
+                const { downloadQuizTemplate } = await import('./data/excelTemplateGenerator');
+                downloadQuizTemplate();
+              }}>
+                📄 Tải template Excel
+              </Button>
+            </div>
+            <div className="d-flex gap-2">
+              <Button variant="secondary" onClick={() => {
+                setShowQuizUploadModal(false);
+                setQuizUploadPreview(null);
+                setSelectedQuizFile(null);
+              }}>
+                {quizUploadPreview ? 'Đóng' : 'Hủy'}
+              </Button>
+              {!quizUploadPreview && (
+                <Button variant="primary" onClick={uploadQuizExcel} disabled={isUploading || !selectedQuizFile}>
+                  {isUploading ? 'Đang xử lý...' : 'Xử lý Excel'}
+                </Button>
+              )}
+            </div>
+          </div>
+        )}
+      >
+        <div>
+          <div className="mb-3">
+            <p className="mb-2">
+              <strong>Định dạng file Excel yêu cầu:</strong>
+            </p>
+            <ul className="small text-muted">
+              <li>Cột A: <strong>Tên câu hỏi</strong> - Nội dung câu hỏi</li>
+              <li>Cột B: <strong>Đáp án đúng</strong> - Số thứ tự đáp án đúng (1, 2, 3, 4)</li>
+              <li>Cột C: <strong>Số điểm</strong> - Điểm cho câu hỏi (tùy chọn)</li>
+              <li>Cột D-G: <strong>Đáp án 1, 2, 3, 4</strong> - Các lựa chọn</li>
+            </ul>
+          </div>
+
+          <Form.Group className="mb-3">
+            <Form.Label>Chọn file Excel</Form.Label>
+            <Form.Control
+              type="file"
+              accept=".xlsx,.xls"
+              onChange={(e) => setSelectedQuizFile(e.target.files && e.target.files[0] ? e.target.files[0] : null)}
+              disabled={isUploading}
+            />
+            <Form.Text className="text-muted">
+              Hỗ trợ file .xlsx và .xls
+            </Form.Text>
+          </Form.Group>
+
+          {selectedQuizFile && !quizUploadPreview && (
+            <div className="alert alert-info">
+              <small>
+                <strong>File đã chọn:</strong> {selectedQuizFile.name} ({(selectedQuizFile.size / 1024).toFixed(1)} KB)
+              </small>
+            </div>
+          )}
+
+          {quizUploadPreview && (
+            <div className="mt-3">
+              <div className="alert alert-success">
+                <h6 className="alert-heading">✅ Xử lý thành công!</h6>
+                <p className="mb-2">
+                  <strong>File:</strong> {quizUploadPreview.summary?.fileName}<br/>
+                  <strong>Tổng số dòng:</strong> {quizUploadPreview.summary?.totalRows}<br/>
+                  <strong>Câu hỏi hợp lệ:</strong> {quizUploadPreview.summary?.validQuizzes}
+                </p>
+              </div>
+
+              {quizUploadPreview.sampleQuestions && (
+                <div>
+                  <h6>📋 Xem trước một số câu hỏi:</h6>
+                  <div style={{ maxHeight: 300, overflow: 'auto', background: '#f8f9fa', padding: 12, border: '1px solid #dee2e6', borderRadius: 4 }}>
+                    {quizUploadPreview.sampleQuestions.map((question, index) => (
+                      <div key={index} className="mb-3 pb-2 border-bottom">
+                        <strong>Câu {index + 1}:</strong> {question.question_text}
+                        <ul className="mb-0 mt-1">
+                          {question.choices.map((choice, choiceIndex) => (
+                            <li key={choiceIndex} className={choice.is_correct ? 'text-success fw-bold' : ''}>
+                              {choice.text} {choice.is_correct && '✓'}
+                            </li>
+                          ))}
+                        </ul>
+                        {question.points && question.points !== 1 && (
+                          <small className="text-muted">Điểm: {question.points}</small>
+                        )}
+                      </div>
+                    ))}
+                    {quizUploadPreview.summary?.validQuizzes > 3 && (
+                      <div className="text-center text-muted">
+                        <small>... và {quizUploadPreview.summary.validQuizzes - 3} câu hỏi khác</small>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
           )}
         </div>
       </StandardModal>
