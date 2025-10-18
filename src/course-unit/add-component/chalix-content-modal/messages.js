@@ -163,10 +163,17 @@ const messages = defineMessages({
     description: 'Label for external slide URL section',
   },
 
+  // Video source type selection
+  videoSourceTypeLabel: {
+    id: 'course-authoring.course-unit.add-component.chalix.form.videoSourceType',
+    defaultMessage: 'Video Source Type',
+    description: 'Label for video source type selection',
+  },
+
   // Info messages
   videoSourceInfo: {
     id: 'course-authoring.course-unit.add-component.chalix.info.videoSource',
-    defaultMessage: 'Provide either a direct video URL or a YouTube video ID. YouTube videos will be embedded using the platform\'s video player.',
+    defaultMessage: 'Choose whether to use an external video link (YouTube, Google Drive) or upload a new video file.',
     description: 'Information about video source options',
   },
 });

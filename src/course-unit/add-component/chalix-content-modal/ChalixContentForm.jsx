@@ -80,8 +80,23 @@ const ChalixContentForm = ({ contentType, onSubmit, onCancel, unitId, courseId }
         break;
 
       case COMPONENT_TYPES.unitVideo:
-        if (!formData.videoUrl?.trim() && !formData.youtubeId?.trim()) {
-          newErrors.video = intl.formatMessage(messages.videoSourceRequired);
+        const videoSourceType = formData.videoSourceType || 'external_url';
+        
+        if (videoSourceType === 'external_url') {
+          if (!formData.externalVideoUrl?.trim()) {
+            newErrors.externalVideoUrl = intl.formatMessage(messages.videoSourceRequired);
+          } else {
+            // Validate URL format
+            const url = formData.externalVideoUrl.trim();
+            const isValidUrl = /^https?:\/\//.test(url);
+            if (!isValidUrl) {
+              newErrors.externalVideoUrl = 'Please enter a valid URL starting with http:// or https://';
+            }
+          }
+        } else if (videoSourceType === 'upload') {
+          if (!formData.uploadedVideo) {
+            newErrors.video = 'Please upload a video file';
+          }
         }
         break;
 
@@ -134,8 +149,14 @@ const ChalixContentForm = ({ contentType, onSubmit, onCancel, unitId, courseId }
         break;
 
       case COMPONENT_TYPES.unitVideo:
-        contentData.video_url = formData.videoUrl || '';
-        contentData.youtube_id = formData.youtubeId || '';
+        contentData.video_source_type = formData.videoSourceType || 'external_url';
+        
+        if (contentData.video_source_type === 'external_url') {
+          contentData.external_video_url = formData.externalVideoUrl || '';
+        } else if (contentData.video_source_type === 'upload') {
+          contentData.uploaded_video = formData.uploadedVideo || null;
+        }
+        
         contentData.download_video = formData.downloadVideo || false;
         break;
 
@@ -220,59 +241,85 @@ const ChalixContentForm = ({ contentType, onSubmit, onCancel, unitId, courseId }
         <FormattedMessage {...messages.videoSourceInfo} />
       </Alert>
 
-      {/* Unit-level video upload */}
-      <Card className="mb-3">
-        <Card.Header>
-          <FormattedMessage {...messages.uploadVideoLabel} />
-        </Card.Header>
-        <Card.Body>
-          <UnitMediaUpload
-            unitId={unitId}
-            courseId={courseId}
-            mediaType="video"
-            onUploadComplete={(media) => {
-              if (media) {
-                handleInputChange('uploadedVideo', media);
-              }
-            }}
-          />
-        </Card.Body>
-      </Card>
+      {/* Video Source Type Selection */}
+      <Form.Group className="mb-3">
+        <Form.Label>
+          <FormattedMessage {...messages.videoSourceTypeLabel} />
+          <span className="text-danger">*</span>
+        </Form.Label>
+        <Form.Control
+          as="select"
+          value={formData.videoSourceType || 'external_url'}
+          onChange={(e) => handleInputChange('videoSourceType', e.target.value)}
+        >
+          <option value="external_url">External URL (YouTube, Google Drive, etc.)</option>
+          <option value="upload">Upload Video File</option>
+        </Form.Control>
+        <Form.Text className="text-muted">
+          Choose whether to use an external video link or upload a new video file.
+        </Form.Text>
+      </Form.Group>
 
-      {/* Alternative: External video sources */}
-      <Card className="mb-3">
-        <Card.Header>
-          <FormattedMessage {...messages.externalVideoLabel} />
-        </Card.Header>
-        <Card.Body>
-          <Form.Group>
-            <Form.Label>
-              <FormattedMessage {...messages.videoUrlLabel} />
-            </Form.Label>
-            <Form.Control
-              type="url"
-              value={formData.videoUrl || ''}
-              onChange={(e) => handleInputChange('videoUrl', e.target.value)}
-              placeholder="https://example.com/video.mp4"
-            />
-          </Form.Group>
+      {/* Conditional rendering based on video source type */}
+      {(formData.videoSourceType || 'external_url') === 'external_url' ? (
+        // External video sources section
+        <Card className="mb-3">
+          <Card.Header>
+            <FormattedMessage {...messages.externalVideoLabel} />
+          </Card.Header>
+          <Card.Body>
+            <Form.Group>
+              <Form.Label>
+                <FormattedMessage {...messages.videoUrlLabel} />
+                <span className="text-danger">*</span>
+              </Form.Label>
+              <Form.Control
+                type="url"
+                value={formData.externalVideoUrl || ''}
+                onChange={(e) => handleInputChange('externalVideoUrl', e.target.value)}
+                placeholder="https://www.youtube.com/watch?v=... or https://drive.google.com/file/d/.../view"
+                isInvalid={!!errors.externalVideoUrl}
+              />
+              <Form.Text className="text-muted">
+                Paste YouTube URL, Google Drive video share link, or direct video file URL
+              </Form.Text>
+              {errors.externalVideoUrl && (
+                <Form.Control.Feedback type="invalid">
+                  {errors.externalVideoUrl}
+                </Form.Control.Feedback>
+              )}
+            </Form.Group>
 
-          <Form.Group>
-            <Form.Label>
-              <FormattedMessage {...messages.youtubeIdLabel} />
-            </Form.Label>
-            <Form.Control
-              type="text"
-              value={formData.youtubeId || ''}
-              onChange={(e) => handleInputChange('youtubeId', e.target.value)}
-              placeholder="dQw4w9WgXcQ"
+            <Alert variant="success" className="mt-2">
+              <strong>Supported formats:</strong>
+              <ul className="mb-0 mt-1">
+                <li>YouTube: https://www.youtube.com/watch?v=VIDEO_ID or https://youtu.be/VIDEO_ID</li>
+                <li>Google Drive: Share link from Google Drive video</li>
+                <li>Direct video: .mp4, .webm, .ogg files hosted anywhere</li>
+              </ul>
+            </Alert>
+          </Card.Body>
+        </Card>
+      ) : (
+        // Video upload section
+        <Card className="mb-3">
+          <Card.Header>
+            <FormattedMessage {...messages.uploadVideoLabel} />
+          </Card.Header>
+          <Card.Body>
+            <UnitMediaUpload
+              unitId={unitId}
+              courseId={courseId}
+              mediaType="video"
+              onUploadComplete={(media) => {
+                if (media) {
+                  handleInputChange('uploadedVideo', media);
+                }
+              }}
             />
-            <Form.Text className="text-muted">
-              <FormattedMessage {...messages.youtubeIdHelp} />
-            </Form.Text>
-          </Form.Group>
-        </Card.Body>
-      </Card>
+          </Card.Body>
+        </Card>
+      )}
 
       {errors.video && (
         <Alert variant="danger">

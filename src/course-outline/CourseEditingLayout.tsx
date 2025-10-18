@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { getAuthenticatedUser } from '@edx/frontend-platform/auth';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { getAuthenticatedUser, getAuthenticatedHttpClient } from '@edx/frontend-platform/auth';
+import { getConfig } from '@edx/frontend-platform';
 import { useDispatch, useSelector } from 'react-redux';
 import { useCourseConfig } from './hooks/useCourseConfig';
 import { useQuizData } from './hooks/useQuizData';
@@ -34,8 +35,9 @@ import {
   Settings as SettingsIcon,
 } from '@openedx/paragon/icons';
 import { XBlock } from '@src/data/types';
-import { addVideoFile, deleteVideoFile, fetchVideos, fetchUnitVideos } from '../files-and-videos/videos-page/data/thunks';
+import { addVideoFile, deleteVideoFile, fetchVideos, fetchUnitVideos, addVideoUrlToUnit } from '../files-and-videos/videos-page/data/thunks';
 import { hasUnitVideos, hasUnitSlides, getUnitVideos } from '../files-and-videos/videos-page/data/selectors';
+import { fetchCourseOutlineIndexQuery, fetchCourseSectionQuery } from './data/thunk';
 import { addSlideFile, deleteSlideFile, fetchSlides, fetchUnitSlides } from '../files-and-videos/slides-page/data/thunks';
 import { RequestStatus } from '../data/constants';
 import { useModels } from '../generic/model-store';
@@ -63,6 +65,31 @@ const CourseEditingLayout: React.FC<CourseEditingLayoutProps> = ({
   onSectionSelect,
   onConfigurationEdit,
 }) => {
+  // Helper to read CSRF token from cookies (Django default csrftoken)
+  const getCSRFToken = useCallback(() => {
+    try {
+      // Try multiple common CSRF cookie names
+      const cookieNames = ['csrftoken', 'csrf_token', 'X-CSRFToken'];
+      
+      for (const cookieName of cookieNames) {
+        const match = document.cookie.match(new RegExp('(^|; )' + cookieName + '=([^;]+)'));
+        if (match && match[2]) {
+          const token = decodeURIComponent(match[2]).trim();
+          if (token && token.length > 0) {
+            console.log(`🍪 Found CSRF token in ${cookieName} cookie:`, token.substring(0, 8) + '...');
+            return token;
+          }
+        }
+      }
+      
+      console.warn('🍪 No CSRF token found in any cookies');
+      return '';
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.warn('Unable to read CSRF token from cookies', e);
+      return '';
+    }
+  }, []);
   const dispatch = useDispatch();
   const [selectedSection, setSelectedSection] = useState<XBlock | null>(null);
   const uploadingIdsRef = useRef<{ uploadData: Record<string, any>; uploadCount: number }>({ 
@@ -113,6 +140,16 @@ const CourseEditingLayout: React.FC<CourseEditingLayoutProps> = ({
     correctAnswers: [],
     multipleChoice: false,
   });
+
+  // Video source selection modal state
+  const [showVideoSourceModal, setShowVideoSourceModal] = useState(false);
+  const [selectedVideoUnit, setSelectedVideoUnit] = useState<XBlock | null>(null);
+
+  // Video URL input modal state
+  const [showVideoUrlModal, setShowVideoUrlModal] = useState(false);
+  const [videoUrl, setVideoUrl] = useState('');
+  const [videoUrlError, setVideoUrlError] = useState('');
+  const [isSubmittingUrl, setIsSubmittingUrl] = useState(false);
 
   // Fetch course configuration from Chalix API
   const { courseConfig, isLoading: isConfigLoading, error: configError, refetch: refetchConfig } = useCourseConfig(courseId);
@@ -724,6 +761,98 @@ const CourseEditingLayout: React.FC<CourseEditingLayoutProps> = ({
     input.click();
   };
 
+  // New video creation handler - shows source selection popup
+  const handleVideoCreate = (unit: XBlock) => {
+    setSelectedVideoUnit(unit);
+    setShowVideoSourceModal(true);
+  };
+
+  // Handle video source selection
+  const handleVideoSourceSelection = (sourceType: 'upload' | 'url') => {
+    setShowVideoSourceModal(false);
+    
+    if (sourceType === 'upload') {
+      // Use existing upload flow
+      handleVideoUpload('video');
+    } else if (sourceType === 'url') {
+      // Show URL input modal
+      setVideoUrl('');
+      setVideoUrlError('');
+      setShowVideoUrlModal(true);
+    }
+  };
+
+  // Handle video URL submission - Use Redux flow like file uploads
+  const handleVideoUrlSubmit = async () => {
+    console.log('🎬 handleVideoUrlSubmit called with URL:', videoUrl);
+    
+    if (!videoUrl.trim()) {
+      setVideoUrlError('Vui lòng nhập URL video');
+      return;
+    }
+
+    // Basic URL validation
+    try {
+      new URL(videoUrl);
+    } catch {
+      setVideoUrlError('URL không hợp lệ. Vui lòng kiểm tra lại.');
+      return;
+    }
+
+    // Check if it's a supported video URL (YouTube, Google Drive)
+    const isYoutube = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/i.test(videoUrl);
+    const isGoogleDrive = /drive\.google\.com\/file\/d\/([a-zA-Z0-9-_]+)/i.test(videoUrl);
+    
+    if (!isYoutube && !isGoogleDrive) {
+      setVideoUrlError('Hiện tại chỉ hỗ trợ URL từ YouTube và Google Drive');
+      return;
+    }
+
+    try {
+      setVideoUrlError('');
+      setIsSubmittingUrl(true);
+      
+      const unitId = selectedVideoUnit?.id || selectedSection?.id;
+      const videoSourceType = isYoutube ? 'youtube' : 'google_drive';
+      const displayName = isYoutube ? 'YouTube Video' : 'Google Drive Video';
+      
+      console.log('� Creating external video using Redux flow:', {
+        unitId,
+        videoUrl: videoUrl.trim(),
+        videoSourceType,
+        displayName,
+      });
+      
+      // Use the new Redux action for external video URLs
+      const result = await dispatch(addVideoUrlToUnit(
+        unitId,
+        videoUrl.trim(),
+        videoSourceType,
+        displayName
+      ));
+      
+      if (result.success) {
+        console.log('✅ External video created successfully');
+        
+        // Close modal and show success message
+        setShowVideoUrlModal(false);
+        setVideoUrl('');
+        setUploadMessage('✅ Đã tạo video thành công!');
+        setShowToast(true);
+        setTimeout(() => setShowToast(false), 3000);
+      } else {
+        console.error('❌ Failed to create external video:', result.error);
+        setVideoUrlError(result.error || 'Không thể tạo video từ URL này.');
+      }
+      
+    } catch (error) {
+      console.error('Error adding video URL:', error);
+      setVideoUrlError('Có lỗi xảy ra khi thêm video. Vui lòng thử lại.');
+    } finally {
+      setIsSubmittingUrl(false);
+    }
+  };
+
   // Get all units from sections (flattened)
   const getAllUnits = () => {
     const units: Array<XBlock & { sectionTitle?: string }> = [];
@@ -754,7 +883,12 @@ const CourseEditingLayout: React.FC<CourseEditingLayoutProps> = ({
       console.log('Found unit for selectedSectionId:', unit?.id, unit?.displayName);
       if (unit && (!selectedSection || selectedSection.id !== unit.id)) {
         console.log('Setting selectedSection to:', unit.id);
+        console.log('Previous selectedSection:', selectedSection?.id);
+        console.log('New unit:', unit);
         setSelectedSection(unit);
+        console.log('setSelectedSection called');
+      } else {
+        console.log('NOT setting selectedSection - unit already selected:', unit?.id);
       }
     } else if (allUnits.length > 0 && (!selectedSection || selectedSection.id !== allUnits[0].id)) {
       console.log('Setting selectedSection to first unit:', allUnits[0].id);
@@ -799,8 +933,6 @@ const CourseEditingLayout: React.FC<CourseEditingLayoutProps> = ({
   }, [selectedSection?.id, dispatch]);
 
   // Get content items for selected unit (videos, slides, quizzes)
-  // Now using unit-specific video and slide checking below
-
   const getContentItems = (selectedUnit: XBlock, hasVideos: boolean, hasSlides: boolean, hasQuizzes: boolean) => {
     // For new units, start with empty content that can be uploaded/created
     const unitIndex = allUnits.findIndex(u => u.id === selectedUnit.id) + 1;
@@ -810,7 +942,7 @@ const CourseEditingLayout: React.FC<CourseEditingLayoutProps> = ({
         title: 'Video bài giảng',
         subtitle: hasVideos ? `${unitIndex}. ${selectedUnit.displayName} - Bấm để xem Video bài giảng` : `${unitIndex}. ${selectedUnit.displayName} - Chưa có video`,
         icon: VideoIcon,
-        primaryAction: 'Tải lên mới',
+        primaryAction: 'Tạo mới',
         secondaryAction: 'Xoá',
         hasContent: hasVideos,
         onClick: hasVideos ? () => handleVideoClick(selectedUnit) : undefined,
@@ -839,24 +971,18 @@ const CourseEditingLayout: React.FC<CourseEditingLayoutProps> = ({
     ];
   };
 
-  // Import useSelector for unit-specific video checking
+  // Simplified video checking - only check uploaded videos  
   const unitHasVideos = useSelector(state => {
-    const result = selectedSection ? hasUnitVideos(state, selectedSection.id) : false;
-    console.log('unitHasVideos selector result:', result, 'for unit:', selectedSection?.id);
-    if (selectedSection?.id) {
-      const allVideos = state.models?.videos || {};
-      const allVideosList = Object.values(allVideos);
-      console.log('All videos in state:', allVideosList.length, allVideosList.map(v => ({ id: v.id, unitId: v.unitId, displayName: v.displayName })));
-      const unitVideos = allVideosList.filter(video => video.unitId === selectedSection.id);
-      console.log('Unit videos found:', unitVideos.length, unitVideos);
-    }
-    return result;
+    if (!selectedSection?.id) return false;
+    return hasUnitVideos(state, selectedSection.id);
+  });
+  // Simplified video list - only get uploaded videos
+  const unitVideos = useSelector(state => {
+    if (!selectedSection?.id) return [];
+    return getUnitVideos(state, selectedSection.id);
   });
   
-  // Get unit videos for the click handler
-  const unitVideos = useSelector(state => selectedSection ? getUnitVideos(state, selectedSection.id) : []);
-  
-  // Temporarily use course-level slide checking until we create unit slide selectors
+  // Use course-level slide checking
   const allSlides = useSelector(state => state.models?.slides || {});
   const courseSlides = Object.values(allSlides);
   const unitHasSlides = courseSlides.length > 0;
@@ -1257,7 +1383,9 @@ const CourseEditingLayout: React.FC<CourseEditingLayoutProps> = ({
                                 className="me-2 mb-1"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  if (item.type === 'video' || item.type === 'slide') {
+                                  if (item.type === 'video') {
+                                    handleVideoCreate(selectedSection);
+                                  } else if (item.type === 'slide') {
                                     handleVideoUpload(item.type);
                                   } else if (item.type === 'quiz' && item.onQuizCreate) {
                                     item.onQuizCreate();
@@ -1289,7 +1417,41 @@ const CourseEditingLayout: React.FC<CourseEditingLayoutProps> = ({
                           {/* Collapsible video player for video item */}
                           {item.type === 'video' && item.hasContent && item.videoUrl && !videoCollapsed && (
                             <div className="mt-3">
-                              <video width="100%" height="320" controls src={item.videoUrl} />
+                              {(() => {
+                                const url = item.videoUrl || '';
+                                const isYouTube = /(?:youtube\.com|youtu\.be)/i.test(url);
+                                const isDrive = /drive\.google\.com/i.test(url);
+                                if (isYouTube) {
+                                  const embed = (item.publicUrl && String(item.publicUrl)) || url.replace('watch?v=', 'embed/').replace('youtu.be/', 'youtube.com/embed/');
+                                  return (
+                                    <iframe
+                                      width="100%"
+                                      height="320"
+                                      src={embed}
+                                      title={item.displayName || 'YouTube Video'}
+                                      frameBorder="0"
+                                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                      allowFullScreen
+                                    />
+                                  );
+                                }
+                                if (isDrive) {
+                                  const preview = (item.publicUrl && String(item.publicUrl)) || url.replace('/view', '/preview');
+                                  return (
+                                    <iframe
+                                      width="100%"
+                                      height="320"
+                                      src={preview}
+                                      title={item.displayName || 'Google Drive Video'}
+                                      frameBorder="0"
+                                      allowFullScreen
+                                    />
+                                  );
+                                }
+                                return (
+                                  <video width="100%" height="320" controls src={item.publicUrl || item.videoUrl} />
+                                );
+                              })()}
                             </div>
                           )}
                         </div>
@@ -1533,7 +1695,46 @@ const CourseEditingLayout: React.FC<CourseEditingLayoutProps> = ({
         size="xl"
       >
         <div style={{ textAlign: 'center', padding: '20px' }}>
-          {currentVideo?.publicUrl || currentVideo?.downloadLink || currentVideo?.url || currentVideo?.uploadUrl || currentVideo?.clientVideoId ? (
+          {/* Check if this is an external video (YouTube, Google Drive) or an uploaded video with a publicUrl that is an embed */}
+          {(() => {
+            const pub = currentVideo?.publicUrl || '';
+            const url = currentVideo?.external_url || currentVideo?.url || '';
+            const combined = String(pub || url || '');
+            const isYouTube = /(?:youtube\.com\/embed|youtube\.com|youtu\.be)/i.test(combined) || currentVideo?.video_source_type === 'youtube';
+            const isDrive = /drive\.google\.com/i.test(combined) || currentVideo?.video_source_type === 'google_drive';
+
+            if (isYouTube) {
+              const embedSrc = pub || (url || '').replace('watch?v=', 'embed/').replace('youtu.be/', 'youtube.com/embed/');
+              return (
+                <iframe
+                  width="100%"
+                  height="500"
+                  src={embedSrc}
+                  title={currentVideo?.displayName || 'YouTube Video'}
+                  frameBorder="0"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                />
+              );
+            }
+
+            if (isDrive) {
+              const driveSrc = pub || (url || '').replace('/view', '/preview');
+              return (
+                <iframe
+                  width="100%"
+                  height="500"
+                  src={driveSrc}
+                  title={currentVideo?.displayName || 'Google Drive Video'}
+                  frameBorder="0"
+                  allowFullScreen
+                />
+              );
+            }
+
+            return (
+              (currentVideo?.publicUrl || currentVideo?.downloadLink || currentVideo?.url || currentVideo?.uploadUrl || currentVideo?.clientVideoId) ? (
+            // Regular uploaded videos
             <video
               controls
               style={{ width: '100%', maxHeight: '500px' }}
@@ -1585,7 +1786,7 @@ const CourseEditingLayout: React.FC<CourseEditingLayoutProps> = ({
             >
               Trình duyệt của bạn không hỗ trợ thẻ video.
             </video>
-          ) : (
+            ) : (
             <div>
               <p>Không thể phát video này.</p>
               <p>Video ID: {currentVideo?.id || currentVideo?.edxVideoId}</p>
@@ -1596,7 +1797,9 @@ const CourseEditingLayout: React.FC<CourseEditingLayoutProps> = ({
               <p>URL: {currentVideo?.url || 'Not available'}</p>
               <p>Có thể video chưa được tải lên hoàn tất hoặc không có đường dẫn phát.</p>
             </div>
-          )}
+          )
+          );
+          })()}
         </div>
       </StandardModal>
 
@@ -2004,6 +2207,126 @@ const CourseEditingLayout: React.FC<CourseEditingLayoutProps> = ({
             </Card>
           </div>
         )}
+      </StandardModal>
+
+      {/* Video Source Selection Modal */}
+      <StandardModal
+        title="Chọn nguồn video"
+        isOpen={showVideoSourceModal}
+        onClose={() => setShowVideoSourceModal(false)}
+        size="md"
+        footerNode={(
+          <div className="d-flex justify-content-end">
+            <Button
+              variant="secondary"
+              onClick={() => setShowVideoSourceModal(false)}
+            >
+              Hủy
+            </Button>
+          </div>
+        )}
+      >
+        <div className="text-center">
+          <p className="mb-4">Bạn muốn thêm video bằng cách nào?</p>
+          <div className="d-flex justify-content-center gap-3">
+            <Button
+              variant="primary"
+              size="lg"
+              className="px-4 py-3"
+              onClick={() => handleVideoSourceSelection('upload')}
+            >
+              <i className="fas fa-upload me-2"></i>
+              Tải lên video
+            </Button>
+            <Button
+              variant="outline-primary"
+              size="lg"
+              className="px-4 py-3"
+              onClick={() => handleVideoSourceSelection('url')}
+            >
+              <i className="fas fa-link me-2"></i>
+              Thêm link video
+            </Button>
+          </div>
+          <small className="text-muted mt-3 d-block">
+            Bạn có thể tải lên file video hoặc thêm link từ YouTube, Google Drive
+          </small>
+        </div>
+      </StandardModal>
+
+      {/* Video URL Input Modal */}
+      <StandardModal
+        title="Thêm link video"
+        isOpen={showVideoUrlModal}
+        onClose={() => {
+          setShowVideoUrlModal(false);
+          setVideoUrl('');
+          setVideoUrlError('');
+          setIsSubmittingUrl(false);
+        }}
+        size="md"
+        footerNode={(
+          <div className="d-flex justify-content-end gap-2">
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setShowVideoUrlModal(false);
+                setVideoUrl('');
+                setVideoUrlError('');
+                setIsSubmittingUrl(false);
+              }}
+              disabled={isSubmittingUrl}
+            >
+              Hủy
+            </Button>
+            <Button
+              variant="primary"
+              onClick={handleVideoUrlSubmit}
+              disabled={isSubmittingUrl}
+            >
+              {isSubmittingUrl ? (
+                <>
+                  <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                  Đang thêm...
+                </>
+              ) : (
+                'Thêm video'
+              )}
+            </Button>
+          </div>
+        )}
+      >
+        <div>
+          <p className="mb-3">Nhập URL video từ YouTube hoặc Google Drive:</p>
+          
+          <Form.Group className="mb-3">
+            <Form.Label>URL Video <span className="text-danger">*</span></Form.Label>
+            <Form.Control
+              type="url"
+              placeholder="https://www.youtube.com/watch?v=... hoặc https://drive.google.com/file/d/..."
+              value={videoUrl}
+              onChange={(e) => {
+                setVideoUrl(e.target.value);
+                if (videoUrlError) setVideoUrlError('');
+              }}
+              isInvalid={!!videoUrlError}
+            />
+            {videoUrlError && (
+              <div className="invalid-feedback d-block">
+                {videoUrlError}
+              </div>
+            )}
+          </Form.Group>
+
+          <div className="mt-3 p-3 bg-light rounded">
+            <h6 className="mb-2">Định dạng URL được hỗ trợ:</h6>
+            <ul className="mb-0 small">
+              <li><strong>YouTube:</strong> https://www.youtube.com/watch?v=VIDEO_ID</li>
+              <li><strong>YouTube:</strong> https://youtu.be/VIDEO_ID</li>
+              <li><strong>Google Drive:</strong> https://drive.google.com/file/d/FILE_ID/view</li>
+            </ul>
+          </div>
+        </div>
       </StandardModal>
     </div>
   );

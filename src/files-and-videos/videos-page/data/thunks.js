@@ -11,6 +11,7 @@ import {
 import {
   addThumbnail,
   addVideo,
+  addVideoUrl,
   deleteVideo,
   deleteUnitVideo,
   fetchVideoList,
@@ -933,6 +934,88 @@ export function updateTranscriptPreference({ courseId, data }) {
           status: RequestStatus.FAILED,
         }),
       );
+    }
+  };
+}
+
+/**
+ * Add external video URL to unit using the same flow as file uploads
+ * @param {string} unitId Unit ID for the unit to operate on
+ * @param {string} videoUrl External video URL (YouTube, Google Drive, etc.)
+ * @param {string} videoSourceType Source type ('youtube' or 'google_drive')
+ * @param {string} displayName Display name for the video
+ */
+export function addVideoUrlToUnit(unitId, videoUrl, videoSourceType, displayName) {
+  return async (dispatch) => {
+    dispatch(
+      updateEditStatus({ editType: 'add', status: RequestStatus.IN_PROGRESS }),
+    );
+    
+    try {
+      console.log('🎬 Adding external video URL to unit:', {
+        unitId,
+        videoUrl,
+        videoSourceType,
+        displayName,
+      });
+      
+      const currentController = new AbortController();
+      controllers.push(currentController);
+      
+      console.log('📤 Calling addVideoUrl API function...');
+      const response = await addVideoUrl(
+        unitId,
+        videoUrl,
+        videoSourceType,
+        displayName,
+        currentController
+      );
+      
+      console.log('✅ External video URL added successfully:', response.data);
+      console.log('📊 Response status:', response.status);
+      console.log('📊 Response headers:', response.headers);
+      
+      dispatch(
+        updateEditStatus({ editType: 'add', status: RequestStatus.SUCCESSFUL }),
+      );
+      
+      // Refresh the unit video list to show the new external video
+      dispatch(fetchUnitVideos(unitId));
+      
+      return { success: true, data: response.data };
+      
+    } catch (error) {
+      console.error('❌ Failed to add external video URL:', error);
+      console.error('❌ Error response status:', error.response?.status);
+      console.error('❌ Error response data:', error.response?.data);
+      console.error('❌ Error response text:', error.response?.statusText);
+      
+      let errorMessage = 'Failed to add video from URL';
+      
+      if (error.response?.status === 400) {
+        errorMessage = error.response?.data?.error || error.response?.data?.details?.video_url?.[0] || 'Invalid video URL or parameters';
+      } else if (error.response?.status === 403) {
+        errorMessage = 'Access denied - insufficient permissions';
+      } else if (error.response?.status === 404) {
+        errorMessage = 'Unit not found';
+      } else if (error.response?.status === 500) {
+        errorMessage = error.response?.data?.error || 'Server error - please try again later';
+      } else if (error.response?.status >= 500) {
+        errorMessage = 'Server error - please try again later';
+      }
+      
+      dispatch(
+        updateErrors({
+          error: 'add',
+          message: errorMessage,
+        }),
+      );
+      
+      dispatch(
+        updateEditStatus({ editType: 'add', status: RequestStatus.FAILED }),
+      );
+      
+      return { success: false, error: errorMessage };
     }
   };
 }

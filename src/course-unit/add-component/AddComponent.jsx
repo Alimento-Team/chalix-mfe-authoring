@@ -107,61 +107,95 @@ const AddComponent = ({
 
   const handleChalixContentCreation = useCallback(async (contentType, contentData) => {
     try {
-      // WORKAROUND: Use standard XBlock creation API since custom Chalix API isn't deployed yet
-      // Create a vertical (unit) with the title
-      const unitDisplayName = `${contentData.title} (Lớp Học Trực Tuyến)`;
+      if (contentType === COMPONENT_TYPES.unitVideo) {
+        // Create video block directly with enhanced properties
+        const videoBlockData = {
+          type: 'video',
+          parentLocator: blockId,
+          displayName: contentData.title,
+        };
 
-      handleCreateNewCourseXBlock({
-        type: 'vertical',
-        parentLocator: blockId,
-        displayName: unitDisplayName,
-      }, async (unitResult) => {
-        if (unitResult.locator && contentType === COMPONENT_TYPES.onlineClass) {
-          // Create an HTML block with online class content including the meeting URL
-          setTimeout(() => {
-            // Generate HTML content with the meeting URL
-            const htmlContent = `
-              <div style="background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 8px; padding: 20px; margin: 10px 0;">
-                <h3 style="color: #00AAED; margin-top: 0;">📹 ${contentData.title}</h3>
-                <p style="margin: 10px 0;"><strong>Loại:</strong> Lớp Học Trực Tuyến</p>
-                ${contentData.meetingUrl ? `
-                  <p style="margin: 10px 0;"><strong>Liên kết cuộc họp:</strong></p>
-                  <a href="${contentData.meetingUrl}" target="_blank" rel="noopener noreferrer" 
-                     style="display: inline-block; background: #007bff; color: white; padding: 10px 20px; 
-                            text-decoration: none; border-radius: 5px; margin: 5px 0;">
-                    🔗 Tham gia lớp học trực tuyến
-                  </a>
-                  <p style="margin: 5px 0; font-size: 12px; color: #666;">
-                    URL: ${contentData.meetingUrl}
-                  </p>
-                ` : `
-                  <p style="color: #dc3545; font-style: italic;">Chưa có URL cuộc họp</p>
-                `}
-                <hr style="margin: 15px 0;">
-                <p style="font-size: 12px; color: #666; margin-bottom: 0;">
-                  Để chỉnh sửa thông tin này, nhấn vào nút "Edit" ở trên.
-                </p>
-              </div>
-            `;
-
-            handleCreateNewCourseXBlock({
-              type: 'html',
-              parentLocator: unitResult.locator,
-              displayName: 'Online Class Info',
-              boilerplate: 'raw',
-              data: htmlContent,
-            }, (htmlResult) => {
-              // Content created successfully with meeting URL
-              console.log('Online class created with meeting URL:', contentData.meetingUrl);
-            });
-          }, 500);
+        // Add video source configuration based on type
+        if (contentData.video_source_type === 'external_url' && contentData.external_video_url) {
+          videoBlockData.video_source_type = 'external_url';
+          videoBlockData.external_video_url = contentData.external_video_url;
+          
+          // Try to extract YouTube ID for better integration
+          const youtubeMatch = contentData.external_video_url.match(
+            /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\n?#]+)/
+          );
+          if (youtubeMatch) {
+            videoBlockData.youtube_id_1_0 = youtubeMatch[1];
+          }
+        } else if (contentData.video_source_type === 'upload' && contentData.uploaded_video) {
+          videoBlockData.video_source_type = 'upload';
+          // Handle uploaded video - this would typically involve setting html5_sources
+          if (contentData.uploaded_video.url) {
+            videoBlockData.html5_sources = [contentData.uploaded_video.url];
+          }
         }
+        
+        videoBlockData.download_video = contentData.download_video || false;
 
-        // Refresh the page after creation
-        setTimeout(() => {
-          dispatch(fetchCourseSectionVerticalData(blockId, sequenceId));
-        }, 1500);
-      });
+        handleCreateNewCourseXBlock(videoBlockData, () => {
+          console.log('Video block created successfully with enhanced properties');
+        });
+      } else if (contentType === COMPONENT_TYPES.onlineClass) {
+        // Create a vertical (unit) with the title for online class
+        const unitDisplayName = `${contentData.title} (Lớp Học Trực Tuyến)`;
+
+        handleCreateNewCourseXBlock({
+          type: 'vertical',
+          parentLocator: blockId,
+          displayName: unitDisplayName,
+        }, async (unitResult) => {
+          if (unitResult.locator) {
+            // Create an HTML block with online class content including the meeting URL
+            setTimeout(() => {
+              // Generate HTML content with the meeting URL
+              const htmlContent = `
+                <div style="background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 8px; padding: 20px; margin: 10px 0;">
+                  <h3 style="color: #00AAED; margin-top: 0;">📹 ${contentData.title}</h3>
+                  <p style="margin: 10px 0;"><strong>Loại:</strong> Lớp Học Trực Tuyến</p>
+                  ${contentData.meeting_link ? `
+                    <p style="margin: 10px 0;"><strong>Liên kết cuộc họp:</strong></p>
+                    <a href="${contentData.meeting_link}" target="_blank" rel="noopener noreferrer" 
+                       style="display: inline-block; background: #007bff; color: white; padding: 10px 20px; 
+                              text-decoration: none; border-radius: 5px; margin: 5px 0;">
+                      🔗 Tham gia lớp học trực tuyến
+                    </a>
+                    <p style="margin: 5px 0; font-size: 12px; color: #666;">
+                      URL: ${contentData.meeting_link}
+                    </p>
+                  ` : `
+                    <p style="color: #dc3545; font-style: italic;">Chưa có URL cuộc họp</p>
+                  `}
+                  <hr style="margin: 15px 0;">
+                  <p style="font-size: 12px; color: #666; margin-bottom: 0;">
+                    Để chỉnh sửa thông tin này, nhấn vào nút "Edit" ở trên.
+                  </p>
+                </div>
+              `;
+
+              handleCreateNewCourseXBlock({
+                type: 'html',
+                parentLocator: unitResult.locator,
+                displayName: 'Online Class Info',
+                boilerplate: 'raw',
+                data: htmlContent,
+              }, (htmlResult) => {
+                // Content created successfully with meeting URL
+                console.log('Online class created with meeting URL:', contentData.meeting_link);
+              });
+            }, 500);
+          }
+        });
+      }
+
+      // Refresh the page after creation
+      setTimeout(() => {
+        dispatch(fetchCourseSectionVerticalData(blockId, sequenceId));
+      }, 1500);
 
       setChalixSelectedType(null);
       closeChalixModal();

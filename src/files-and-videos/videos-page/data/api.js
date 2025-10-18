@@ -234,6 +234,46 @@ export async function addVideo(courseId, file, controller, unitId = null) {
   );
 }
 
+/**
+ * Add external video URL to unit.
+ * @param {string} unitId Unit ID for the unit to operate on
+ * @param {string} videoUrl External video URL (YouTube, Google Drive, etc.)
+ * @param {string} videoSourceType Source type ('youtube' or 'google_drive')
+ * @param {string} displayName Display name for the video
+ * @param {AbortController} controller Abort controller for request cancellation
+ */
+export async function addVideoUrl(unitId, videoUrl, videoSourceType, displayName, controller) {
+  const postJson = {
+    video_url: videoUrl,
+    video_source_type: videoSourceType,
+    display_name: displayName,
+  };
+
+  const url = `${getApiBaseUrl()}/api/contentstore/v1/units/${encodeURIComponent(unitId)}/videos/`;
+  
+  console.log('📤 addVideoUrl request:', {
+    url,
+    data: postJson,
+    headers: {
+      'Content-Type': 'application/json',
+    }
+  });
+
+  // Call the CMS API directly (authoring MFE is on Studio domain)
+  // Use the same endpoint as regular video uploads
+  // Explicitly set Content-Type header to ensure proper JSON parsing on backend
+  return getAuthenticatedHttpClient().post(
+    url,
+    postJson,
+    { 
+      signal: controller?.signal,
+      headers: {
+        'Content-Type': 'application/json',
+      }
+    },
+  );
+}
+
 export async function sendVideoUploadStatus(
   courseId,
   edxVideoId,
