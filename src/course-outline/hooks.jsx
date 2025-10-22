@@ -340,18 +340,55 @@ const useCourseOutline = ({ courseId }) => {
 
   const handleEditCourseSubmit = async (values) => {
     try {
+      // `values` should be the raw form values from ConfigureModal. Build
+      // a backend-friendly payload here and ensure final_evaluation_type is
+      // included exactly as the backend expects (support both short keys
+      // like 'project'/'quiz' coming from the form and human-readable
+      // Vietnamese text stored previously).
+      let finalEval = '';
+      if (values.finalEvaluationType) {
+        // If the form provides the short keys 'project' or 'quiz', send them as-is
+        if (values.finalEvaluationType === 'project' || values.finalEvaluationType === 'quiz') {
+          finalEval = values.finalEvaluationType;
+        } else {
+          // Attempt to normalize human-readable/Vietnamese labels back to short keys
+          const v = String(values.finalEvaluationType).toLowerCase();
+          if (v.includes('nộp') || v.includes('thu hoạch') || v.includes('project')) {
+            finalEval = 'project';
+          } else if (v.includes('trắc nghiệm') || v.includes('làm bài') || v.includes('quiz')) {
+            finalEval = 'quiz';
+          } else {
+            // Unknown value — pass through to avoid data loss
+            finalEval = values.finalEvaluationType;
+          }
+        }
+      } else {
+        // preserve existing config value if form didn't set it; try to normalize
+        const existing = courseConfig?.final_evaluation_type || '';
+        const ex = String(existing).toLowerCase();
+        if (ex === 'project' || ex === 'quiz') {
+          finalEval = existing;
+        } else if (ex.includes('nộp') || ex.includes('thu hoạch')) {
+          finalEval = 'project';
+        } else if (ex.includes('trắc nghiệm') || ex.includes('làm bài')) {
+          finalEval = 'quiz';
+        } else {
+          finalEval = existing;
+        }
+      }
+
       const payload = {
         title: values.displayName || courseConfig?.title || 'Untitled Course',
         display_name: values.displayName || undefined,
         short_description: values.shortDescription || '',
         course_type: values.courseType || '',
         course_level: values.courseLevel || '',
-        estimated_hours: values.estimatedHours || null,
+        estimated_hours: values.estimatedHours === '' ? null : values.estimatedHours || null,
         online_course_link: values.onlineCourseLink || '',
         instructor: values.instructor || '',
         start_date: values.courseStartDate || null,
         end_date: values.courseEndDate || null,
-        final_evaluation_type: values.finalEvaluationType || '',
+        final_evaluation_type: finalEval,
       };
       await updateCourseDetail(courseId, payload);
       // Refetch outline and course config for UI

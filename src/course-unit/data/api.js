@@ -273,7 +273,7 @@ export async function getUnitMedia(unitId, mediaType) {
  * @param {string} displayName - Optional display name for the file.
  * @returns {Promise<Object>} - The uploaded media file data.
  */
-export async function uploadUnitMedia(unitId, courseId, mediaType, file, displayName = null) {
+export async function uploadUnitMedia(unitId, courseId, mediaType, file, displayName = '') {
   const formData = new FormData();
   formData.append('file', file);
   formData.append('course_id', courseId);

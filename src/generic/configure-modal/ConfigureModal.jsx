@@ -221,17 +221,10 @@ const ConfigureModal = ({
   const handleSave = (data) => {
     // If this is the course-level modal, call the provided onCourseSubmit handler
     if (isCourseModal && typeof onCourseSubmit === 'function') {
-      const payload = {
-        displayName: data.displayName,
-        courseType: data.courseType || null,
-        courseLevel: data.courseLevel || null,
-        estimated_hours: data.estimatedHours === '' ? null : data.estimatedHours,
-        online_course_link: data.onlineCourseLink || null,
-        instructor: data.instructor || null,
-        start_date: data.courseStartDate || null,
-        end_date: data.courseEndDate || null,
-      };
-      onCourseSubmit(payload);
+      // Pass the raw form values through to the course submit handler so
+      // higher-level code can build the API payload in one place. This
+      // ensures fields like finalEvaluationType are preserved.
+      onCourseSubmit(data);
       return;
     }
     let { releaseDate } = data;

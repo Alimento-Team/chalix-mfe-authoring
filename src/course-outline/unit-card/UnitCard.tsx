@@ -183,11 +183,13 @@ const UnitCard = ({
   );
 
   const extraActionsComponent = (
-    <CourseOutlineUnitCardExtraActionsSlot
-      unit={unit}
-      subsection={subsection}
-      section={section}
-    />
+    (section && subsection) ? (
+      <CourseOutlineUnitCardExtraActionsSlot
+        unit={unit}
+        subsection={subsection}
+        section={section}
+      />
+    ) : null
   );
 
   useEffect(() => {

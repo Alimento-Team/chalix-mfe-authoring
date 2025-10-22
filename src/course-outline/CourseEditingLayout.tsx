@@ -173,8 +173,9 @@ const CourseEditingLayout: React.FC<CourseEditingLayoutProps> = ({
   const displayOnlineCourseLink = courseConfig?.online_course_link;
 
   // Additional course-level display fields
-  const displayCourseType = courseConfig?.courseType || courseConfig?.type || '';
-  const displayCourseLevel = courseConfig?.courseLevel || courseConfig?.level || '';
+  // Prefer snake_case fields returned by the Chalix API, then camelCase fallbacks and generic keys
+  const displayCourseType = courseConfig?.course_type || courseConfig?.courseType || courseConfig?.type || '';
+  const displayCourseLevel = courseConfig?.course_level || courseConfig?.courseLevel || courseConfig?.level || '';
   const displayShortDescription = courseConfig?.short_description || courseConfig?.shortDescription || '';
   const displayStartDateRaw = courseConfig?.start_date || (courseConfig as any)?.start || null;
   const displayEndDateRaw = courseConfig?.end_date || (courseConfig as any)?.end || null;
@@ -460,6 +461,108 @@ const CourseEditingLayout: React.FC<CourseEditingLayoutProps> = ({
     console.log('🎯 Opening quiz Excel upload');
     setSelectedQuizFile(null);
     setShowQuizUploadModal(true);
+  };
+
+  // Replace existing quizzes with new ones from an uploaded Excel file
+  const handleReplaceQuizExcel = async () => {
+    console.log('🎯 Replace existing quizzes with new Excel file');
+
+    if (!selectedSection) {
+      alert('Vui lòng chọn chuyên đề trước khi thay thế đề thi.');
+      return;
+    }
+
+    // Ask user to pick a file via file input
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.xlsx,.xls';
+    input.multiple = false;
+
+    input.onchange = async (event) => {
+      const file = (event.target as HTMLInputElement).files && (event.target as HTMLInputElement).files![0];
+      if (!file) return;
+
+      // Confirm destructive action: delete all existing quizzes
+      const proceed = confirm('Thao tác này sẽ xóa tất cả câu hỏi trắc nghiệm hiện có cho chuyên đề này và thay thế bằng nội dung từ file mới. Bạn có chắc chắn muốn tiếp tục?');
+      if (!proceed) return;
+
+      try {
+        setIsUploading(true);
+        setUploadMessage('Đang xử lý file Excel mới...');
+        setShowToast(true);
+
+        const { parseQuizExcel, createIndividualQuizzes } = await import('./data/excelQuizParser');
+        const parseResult = await parseQuizExcel(file);
+
+        if (!parseResult.success) {
+          throw new Error(parseResult.error || 'Không thể phân tích file Excel');
+        }
+
+        // Fetch existing quizzes for this unit and delete them
+        setUploadMessage('Đang xóa câu hỏi hiện có...');
+        const { listQuizzes, deleteQuiz, createQuiz } = await import('./data/quizService');
+        let listResponse;
+        try {
+          listResponse = await listQuizzes(courseId, selectedSection.id);
+        } catch (err) {
+          console.warn('Could not list quizzes, proceeding to create new ones', err);
+          listResponse = { success: true, quizzes: [] } as any;
+        }
+
+        if (listResponse && listResponse.quizzes && listResponse.quizzes.length > 0) {
+          // Delete sequentially to avoid flooding the API
+          for (const q of listResponse.quizzes) {
+            try {
+              await deleteQuiz(q.id);
+            } catch (err) {
+              console.error('Failed to delete quiz id', q.id, err);
+              // continue deleting others
+            }
+          }
+        }
+
+        setUploadMessage('Đang tạo câu hỏi mới từ file Excel...');
+
+        // Create quizzes from parsed result
+        const results = await createIndividualQuizzes(
+          parseResult.quizzes,
+          courseId,
+          selectedSection.id,
+          createQuiz
+        );
+
+        const successCount = results.filter(r => r.success).length;
+        const failCount = results.filter(r => !r.success).length;
+
+        if (successCount > 0) {
+          setUploadMessage(`Thay thế thành công: ${successCount} câu hỏi được tạo${failCount > 0 ? `, ${failCount} thất bại` : ''}`);
+          // Refresh quiz data
+          refetchQuizzes();
+        } else {
+          throw new Error('Không thể tạo câu hỏi nào từ file mới');
+        }
+
+        // Show preview in modal
+        setQuizUploadPreview({
+          summary: parseResult.summary,
+          sampleQuestions: parseResult.quizzes.slice(0, 3)
+        });
+
+        setShowQuizUploadModal(true);
+        setSelectedQuizFile(file);
+
+        setTimeout(() => setShowToast(false), 3000);
+      } catch (err) {
+        console.error('Replace quiz Excel failed:', err);
+        setUploadMessage(`Thay thế thất bại: ${err.message || err}`);
+        setShowToast(true);
+        setTimeout(() => setShowToast(false), 5000);
+      } finally {
+        setIsUploading(false);
+      }
+    };
+
+    input.click();
   };
 
   const handleEvaluationConfig = () => {
@@ -1411,6 +1514,23 @@ const CourseEditingLayout: React.FC<CourseEditingLayoutProps> = ({
                                 >
                                   {item.secondaryAction}
                                 </Button>
+                              )}
+                              {/* If this is the quiz-upload card and there are existing quizzes, show a Replace/Upload New File button */}
+                              {item.type === 'quiz-upload' && item.hasContent && (
+                                <>
+                                  <div style={{ width: '8px' }} />
+                                  <Button
+                                    size="sm"
+                                    variant="outline-primary"
+                                    className="mb-1"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleReplaceQuizExcel();
+                                    }}
+                                  >
+                                    Tải file mới
+                                  </Button>
+                                </>
                               )}
                             </div>
                           </div>
