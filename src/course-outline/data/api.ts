@@ -502,3 +502,16 @@ export async function updateCourseDetail(courseId: string, payload: Record<strin
   const { data } = await getAuthenticatedHttpClient().patch(url, payload);
   return data;
 }
+
+/**
+ * Get course detail via Chalix dashboard API
+ * @param {string} courseId
+ * @returns {Promise<object>}
+ */
+export async function getCourseDetail(courseId: string): Promise<object> {
+  const base = getApiBaseUrl();
+  const encoded = encodeURIComponent(courseId);
+  const url = `${base}/api/chalix/dashboard/course-detail/${encoded}/`;
+  const { data } = await getAuthenticatedHttpClient().get(url);
+  return camelCaseObject(data);
+}

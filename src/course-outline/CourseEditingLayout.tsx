@@ -42,7 +42,7 @@ import { addSlideFile, deleteSlideFile, fetchSlides, fetchUnitSlides } from '../
 import { RequestStatus } from '../data/constants';
 import { useModels } from '../generic/model-store';
 import FileViewerModal from './file-viewer/FileViewerModal';
-import { updateCourseDetail } from './data/api';
+import { updateCourseDetail, getCourseDetail } from './data/api';
 
 interface CourseEditingLayoutProps {
   courseId: string;
@@ -121,6 +121,8 @@ const CourseEditingLayout: React.FC<CourseEditingLayoutProps> = ({
   // Final evaluation: project question modal state
   const [showProjectModal, setShowProjectModal] = useState(false);
   const [projectQuestion, setProjectQuestion] = useState('');
+  // Preview modal for project question (read-only)
+  const [showProjectPreviewModal, setShowProjectPreviewModal] = useState(false);
 
   // Final evaluation: quiz upload modal state
   const [showQuizUploadModal, setShowQuizUploadModal] = useState(false);
@@ -455,6 +457,13 @@ const CourseEditingLayout: React.FC<CourseEditingLayoutProps> = ({
     console.log('🎯 Opening project question configuration');
     setProjectQuestion(courseConfig?.final_evaluation_project_question || '');
     setShowProjectModal(true);
+  };
+
+  const handlePreviewProjectQuestion = () => {
+    console.log('🎯 Opening project question preview');
+    // Use the latest saved value from courseConfig if available
+    setProjectQuestion(courseConfig?.final_evaluation_project_question || projectQuestion || '');
+    setShowProjectPreviewModal(true);
   };
 
   const handleQuizExcelUpload = () => {
@@ -1010,6 +1019,31 @@ const CourseEditingLayout: React.FC<CourseEditingLayoutProps> = ({
     }
   }, [courseId, dispatch]);
 
+  // Fetch Chalix course-detail on mount to populate persisted fields like final_evaluation_project_question
+  useEffect(() => {
+    let mounted = true;
+    const loadCourseDetail = async () => {
+      try {
+        const data = await getCourseDetail(courseId as string);
+        if (!mounted) return;
+        // The API returns camelCased fields from camelCaseObject in api.ts
+        const question = (data as any).finalEvaluationProjectQuestion || (data as any).final_evaluation_project_question || '';
+        if (question && question !== projectQuestion) {
+          setProjectQuestion(question);
+        }
+      } catch (err) {
+        // eslint-disable-next-line no-console
+        console.warn('Could not load course detail from Chalix API', err);
+      }
+    };
+
+    if (courseId) {
+      loadCourseDetail();
+    }
+
+    return () => { mounted = false; };
+  }, [courseId]);
+
   // Fetch unit-specific media when selectedSection changes
   useEffect(() => {
     console.log('selectedSection changed:', selectedSection?.id, selectedSection?.displayName);
@@ -1138,6 +1172,7 @@ const CourseEditingLayout: React.FC<CourseEditingLayoutProps> = ({
           secondaryAction: 'Xem trước',
           hasContent: hasProjectQuestion,
           onProjectConfig: handleProjectQuestionConfig,
+          onProjectPreview: handlePreviewProjectQuestion,
         }
       ];
     } else if (isMultipleChoice) {
@@ -1510,7 +1545,18 @@ const CourseEditingLayout: React.FC<CourseEditingLayoutProps> = ({
                                   size="sm"
                                   variant="secondary"
                                   className="mb-1"
-                                  onClick={(item.type === 'video' || item.type === 'slide') ? (e => e.stopPropagation()) : undefined}
+                                  onClick={(e) => {
+                                    // Prevent the parent content-item click from firing
+                                    e.stopPropagation();
+                                    // If project-question preview handler is provided, call it
+                                    if (item.type === 'project-question' && (item as any).onProjectPreview) {
+                                      try {
+                                        (item as any).onProjectPreview();
+                                      } catch (err) {
+                                        console.error('Error calling project preview handler', err);
+                                      }
+                                    }
+                                  }}
                                 >
                                   {item.secondaryAction}
                                 </Button>
@@ -1688,9 +1734,29 @@ const CourseEditingLayout: React.FC<CourseEditingLayoutProps> = ({
               value={projectQuestion}
               onChange={(e) => setProjectQuestion((e.target as HTMLTextAreaElement).value)}
             />
-            <Form.Text className="text-muted">Học viên sẽ thấy câu hỏi này trong LMS và có thể tải lên file docx hoặc pptx làm bài tập.</Form.Text>
+            <Form.Text className="text-muted">Học viên sẽ thấy câu hỏi này trong LMS và có thể tải lên file docx hoặc pdf làm bài tập.</Form.Text>
           </Form.Group>
         </Form>
+      </StandardModal>
+
+      {/* Project Question Preview Modal (read-only) */}
+      <StandardModal
+        title="Xem trước câu hỏi bài thu hoạch"
+        isOpen={showProjectPreviewModal}
+        onClose={() => setShowProjectPreviewModal(false)}
+        size="lg"
+        footerNode={(
+          <div className="d-flex justify-content-end">
+            <Button variant="secondary" onClick={() => setShowProjectPreviewModal(false)}>Đóng</Button>
+          </div>
+        )}
+      >
+        <div>
+          <h6 className="mb-2">Hướng dẫn / Câu hỏi</h6>
+          <div style={{ whiteSpace: 'pre-wrap', background: '#f8f9fa', padding: 12, borderRadius: 4, border: '1px solid #e9ecef' }}>
+            {courseConfig?.final_evaluation_project_question || projectQuestion || 'Chưa có câu hỏi nào được thiết lập.'}
+          </div>
+        </div>
       </StandardModal>
 
       {/* Quiz Upload Modal (Final Evaluation: Làm bài trắc nghiệm) */}
