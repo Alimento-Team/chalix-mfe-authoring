@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import PropTypes from 'prop-types';
 import { useSelector } from 'react-redux';
 import { useParams } from 'react-router-dom';
@@ -88,6 +88,9 @@ const CourseUnit = ({ courseId }) => {
     (unitTitle && unitTitle.toLowerCase().includes('kiểm tra cuối')) ||
     (courseConfig && courseConfig.course_type && courseConfig.course_type.includes('Hình thức kiểm tra cuối khoá'))
   );
+
+  // Allow authors to force the inline editor when CMS modal is not available
+  const [showInlineFinalEvalEditor, setShowInlineFinalEvalEditor] = useState(false);
   
   // Debugging: log detection info
   // eslint-disable-next-line no-console
@@ -239,12 +242,53 @@ const CourseUnit = ({ courseId }) => {
                 />
               )}
               {isFinalEvaluation ? (
-                // For final evaluation units we render a dedicated editor layout
-                <FinalEvaluationEditor
-                  courseId={courseId}
-                  blockId={blockId}
-                  unitTitle={unitTitle}
-                />
+                // For final evaluation units prefer the Chalix CMS modal if it's available
+                (() => {
+                  const chalixAvailable = (typeof window !== 'undefined' && window.ChalixCMS);
+                  return (
+                    <div>
+                      {chalixAvailable && (
+                        <div className="mb-3">
+                          <Alert variant="info">
+                            Chế độ kiểm tra cuối khóa được phát hiện. Bạn có thể sử dụng Chalix CMS để chỉnh sửa cấu hình hoặc chọn "Chỉnh sửa nội bộ" để sửa ngay trong giao diện tác giả.
+                            <div className="mt-2 d-flex gap-2">
+                              <Button
+                                variant="primary"
+                                onClick={() => {
+                                  try {
+                                    // Try to open the Chalix CMS modal if the global helper is present
+                                    window.ChalixCMS.openFinalEvaluationModal(courseId);
+                                  } catch (e) {
+                                    // eslint-disable-next-line no-console
+                                    console.warn('Failed to call ChalixCMS.openFinalEvaluationModal', e);
+                                    setShowInlineFinalEvalEditor(true);
+                                  }
+                                }}
+                              >
+                                Mở Chalix Final Evaluation
+                              </Button>
+                              <Button
+                                variant="outline-secondary"
+                                onClick={() => setShowInlineFinalEvalEditor(true)}
+                              >
+                                Chỉnh sửa nội bộ
+                              </Button>
+                            </div>
+                          </Alert>
+                        </div>
+                      )}
+
+                      {/* Render inline editor if Chalix CMS is not available or author chose to edit inline */}
+                      {(!chalixAvailable || showInlineFinalEvalEditor) && (
+                        <FinalEvaluationEditor
+                          courseId={courseId}
+                          blockId={blockId}
+                          unitTitle={unitTitle}
+                        />
+                      )}
+                    </div>
+                  );
+                })()
               ) : (
                 // Default layout for non-final units
                 <>

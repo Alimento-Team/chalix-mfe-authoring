@@ -35,6 +35,7 @@ import {
   Settings as SettingsIcon,
 } from '@openedx/paragon/icons';
 import { XBlock } from '@src/data/types';
+import FinalEvaluationEditor from '../course-unit/final-evaluation/FinalEvaluationEditor';
 import { addVideoFile, deleteVideoFile, fetchVideos, fetchUnitVideos, addVideoUrlToUnit } from '../files-and-videos/videos-page/data/thunks';
 import { hasUnitVideos, hasUnitSlides, getUnitVideos } from '../files-and-videos/videos-page/data/selectors';
 import { fetchCourseOutlineIndexQuery, fetchCourseSectionQuery } from './data/thunk';
@@ -1059,12 +1060,7 @@ const CourseEditingLayout: React.FC<CourseEditingLayoutProps> = ({
         console.log('🎯 To edit this unit, navigate to: http://apps.local.openedx.io:2001/container/' + selectedSection.id);
         console.log('🎯 Current URL is course outline - you need to click the unit to access the editor');
         
-        // Show a prominent alert with navigation button
-        setTimeout(() => {
-          if (confirm('🎯 Final Evaluation Unit Detected!\n\nThis unit requires the special Final Evaluation Editor.\n\nClick OK to navigate to the unit editor, or Cancel to stay on the course outline.')) {
-            window.location.href = 'http://apps.local.openedx.io:2001/container/' + selectedSection.id;
-          }
-        }, 1000);
+        // Final evaluation unit detected - editor will show automatically when quizzes exist
       }
     }
   }, [selectedSection?.id, dispatch]);
@@ -1187,7 +1183,7 @@ const CourseEditingLayout: React.FC<CourseEditingLayoutProps> = ({
             : 'Upload file Excel chứa câu hỏi trắc nghiệm',
           icon: UploadIcon,
           primaryAction: hasQuizQuestions ? 'Xem câu hỏi' : 'Tải lên Excel',
-          secondaryAction: 'Tải template',
+          secondaryAction: hasQuizQuestions ? '' : 'Tải template', // Remove secondary button when quizzes exist
           hasContent: hasQuizQuestions,
           onQuizUpload: hasQuizQuestions ? () => handleQuizClick(selectedUnit) : handleQuizExcelUpload,
         }
@@ -1477,7 +1473,8 @@ const CourseEditingLayout: React.FC<CourseEditingLayoutProps> = ({
                       </Row>
                     </Card.Header>
                     <Card.Body className="p-3">
-                      {contentItems.map((item, index) => (
+                      {/* For final evaluation units with quizzes, skip the card UI and show only the editor */}
+                      {!(isFinalEvaluationUnit && hasQuizzes && quizzes.length > 0) && contentItems.map((item, index) => (
                         <div key={index} className="content-item border rounded p-3 mb-3">
                           <div
                             className="d-flex align-items-center justify-content-between"
@@ -1540,7 +1537,8 @@ const CourseEditingLayout: React.FC<CourseEditingLayoutProps> = ({
                                 {item.primaryAction}
                               </Button>
                               <div style={{ width: '8px' }} />
-                              {item.secondaryAction && (
+                              {/* Show secondary button only if secondaryAction is provided and not empty */}
+                              {item.secondaryAction && item.secondaryAction.trim() && (
                                 <Button
                                   size="sm"
                                   variant="secondary"
@@ -1555,6 +1553,13 @@ const CourseEditingLayout: React.FC<CourseEditingLayoutProps> = ({
                                       } catch (err) {
                                         console.error('Error calling project preview handler', err);
                                       }
+                                    }
+                                    // If quiz-upload without quizzes, download template
+                                    if (item.type === 'quiz-upload' && !item.hasContent) {
+                                      (async () => {
+                                        const { downloadQuizTemplate } = await import('./data/excelTemplateGenerator');
+                                        downloadQuizTemplate();
+                                      })();
                                     }
                                   }}
                                 >
@@ -1622,6 +1627,19 @@ const CourseEditingLayout: React.FC<CourseEditingLayoutProps> = ({
                           )}
                         </div>
                       ))}
+
+                      {/* Inline Final Evaluation Editor - automatically shown when there are quizzes */}
+                      {isFinalEvaluationUnit && hasQuizzes && quizzes.length > 0 && (
+                        <div className="mt-4">
+                          <FinalEvaluationEditor
+                            courseId={courseId}
+                            blockId={selectedSection.id}
+                            unitTitle={selectedSection.displayName}
+                            onViewQuestions={() => handleQuizClick(selectedSection)}
+                            quizCount={quizzes.length}
+                          />
+                        </div>
+                      )}
                     </Card.Body>
                   </>
                 )}
