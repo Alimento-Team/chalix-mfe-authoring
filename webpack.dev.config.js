@@ -16,4 +16,27 @@ const config = createConfig('webpack-dev', {
   },
 });
 
+// Add rule to transpile TypeScript files from @chalix/frontend-component-header
+config.module.rules.push({
+  test: /\.(js|jsx|ts|tsx)$/,
+  include: /node_modules\/@chalix\/frontend-component-header/,
+  use: {
+    loader: 'babel-loader',
+    options: {
+      presets: [
+        '@babel/preset-react',
+        '@babel/preset-typescript',
+      ],
+    },
+  },
+});
+
+// Handle ES module resolution for @chalix/frontend-component-header
+config.module.rules.push({
+  test: /\.m?js$/,
+  resolve: {
+    fullySpecified: false,
+  },
+});
+
 module.exports = config;

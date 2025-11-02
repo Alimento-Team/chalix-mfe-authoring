@@ -1,6 +1,6 @@
 import { getConfig } from '@edx/frontend-platform';
 import { useIntl } from '@edx/frontend-platform/i18n';
-import { StudioHeader } from '@edx/frontend-component-header';
+import { ChalixHeaderWithUserPopup } from '@chalix/frontend-component-header';
 import { type Container, useToggle } from '@openedx/paragon';
 
 import { useWaffleFlags } from '../data/apiHooks';
@@ -67,16 +67,48 @@ const Header = ({
 
   return (
     <>
-      <StudioHeader
-        org={org}
-        number={number}
-        title={title}
-        isHiddenMainMenu={isHiddenMainMenu}
-        mainMenuDropdowns={mainMenuDropdowns}
-        outlineLink={getOutlineLink()}
-        searchButtonAction={meiliSearchEnabled ? openSearchModal : undefined}
-        containerProps={containerProps}
-        isNewHomePage={waffleFlags.useNewHomePage}
+      <ChalixHeaderWithUserPopup
+        organizationTitle="HỆ THỐNG QUẢN TRỊ NỘI DUNG KHÓA HỌC"
+        organizationName={title || `${org} ${number}`.trim() || getConfig().STUDIO_SHORT_NAME || "Studio"}
+        searchPlaceholder="Tìm kiếm nội dung, khóa học..."
+        baseApiUrl={getConfig().LMS_BASE_URL || ''}
+        logoutUrl={`${getConfig().LMS_BASE_URL}/logout`}
+        onNavigate={(tab) => {
+          // Handle navigation based on tab
+          const lmsBaseUrl = getConfig().LMS_BASE_URL || '';
+          const isDevelopment = window.location.hostname === 'localhost' || window.location.hostname.includes('local.openedx.io');
+          const protocol = window.location.protocol;
+          const hostname = window.location.hostname;
+          
+          switch (tab) {
+            case 'home':
+              // Navigate to LMS home
+              window.location.href = `${lmsBaseUrl}/`;
+              break;
+            case 'category':
+              // Navigate to course catalog
+              window.location.href = `${lmsBaseUrl}/courses`;
+              break;
+            case 'learning':
+              // Navigate to learner dashboard (Học tập - course list)
+              if (isDevelopment) {
+                window.location.href = `${protocol}//${hostname}:1996/learner-dashboard/`;
+              } else {
+                window.location.href = `${lmsBaseUrl}/dashboard`;
+              }
+              break;
+            case 'personalize':
+              // Navigate to personalized learning page (Cá nhân hóa)
+              if (isDevelopment) {
+                window.location.href = `${protocol}//${hostname}:1996/learner-dashboard/?tab=personalized`;
+              } else {
+                window.location.href = `${lmsBaseUrl}/dashboard?tab=personalized`;
+              }
+              break;
+            default:
+              break;
+          }
+        }}
       />
       {meiliSearchEnabled && (
         <SearchModal
@@ -90,3 +122,4 @@ const Header = ({
 };
 
 export default Header;
+
