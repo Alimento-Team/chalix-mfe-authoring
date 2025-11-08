@@ -34,6 +34,7 @@ import MoveModal from './move-modal';
 import IframePreviewLibraryXBlockChanges from './preview-changes';
 import CourseUnitHeaderActionsSlot from '../plugin-slots/CourseUnitHeaderActionsSlot';
 import { FinalEvaluationEditor } from './final-evaluation';
+import { TopicQuizEditor } from './topic-quiz';
 import { useCourseConfig } from '../course-outline/hooks/useCourseConfig';
 
 const CourseUnit = ({ courseId }) => {
@@ -89,6 +90,19 @@ const CourseUnit = ({ courseId }) => {
     (courseConfig && courseConfig.course_type && courseConfig.course_type.includes('Hình thức kiểm tra cuối khoá'))
   );
 
+  // Detect topic quiz unit by checking if unit contains quiz blocks
+  // Topic quizzes are identified by having 'problem' or 'quiz' in the block type or display name
+  const isTopicQuiz = !!(
+    courseVerticalChildren &&
+    courseVerticalChildren.children &&
+    courseVerticalChildren.children.some(child => 
+      child.block_type === 'problem' || 
+      child.category === 'problem' ||
+      (child.display_name && child.display_name.toLowerCase().includes('quiz')) ||
+      (child.display_name && child.display_name.toLowerCase().includes('trắc nghiệm'))
+    )
+  );
+
   // Allow authors to force the inline editor when CMS modal is not available
   const [showInlineFinalEvalEditor, setShowInlineFinalEvalEditor] = useState(false);
   
@@ -98,6 +112,8 @@ const CourseUnit = ({ courseId }) => {
     unitTitle,
     courseType: courseConfig?.course_type,
     isFinalEvaluation,
+    isTopicQuiz,
+    children: courseVerticalChildren?.children,
     courseConfig
   });
 
@@ -289,8 +305,37 @@ const CourseUnit = ({ courseId }) => {
                     </div>
                   );
                 })()
+              ) : isTopicQuiz ? (
+                // For topic quiz units, render TopicQuizEditor
+                <>
+                  <TopicQuizEditor
+                    courseId={courseId}
+                    unitId={blockId}
+                    unitTitle={unitTitle}
+                  />
+                  {/* Also show the default unit content below the quiz editor */}
+                  <div className="mt-4">
+                    <XBlockContainerIframe
+                      courseId={courseId}
+                      blockId={blockId}
+                      isUnitVerticalType={isUnitVerticalType}
+                      unitXBlockActions={unitXBlockActions}
+                      courseVerticalChildren={courseVerticalChildren.children}
+                      handleConfigureSubmit={handleConfigureSubmit}
+                    />
+                  </div>
+                  {!readOnly && (
+                    <AddComponent
+                      parentLocator={blockId}
+                      isSplitTestType={isSplitTestType}
+                      isUnitVerticalType={isUnitVerticalType}
+                      handleCreateNewCourseXBlock={handleCreateNewCourseXBlock}
+                      addComponentTemplateData={addComponentTemplateData}
+                    />
+                  )}
+                </>
               ) : (
-                // Default layout for non-final units
+                // Default layout for non-final, non-quiz units
                 <>
                   <XBlockContainerIframe
                     courseId={courseId}
@@ -311,7 +356,7 @@ const CourseUnit = ({ courseId }) => {
                   )}
                 </>
               )}
-              {!isFinalEvaluation && !readOnly && showPasteXBlock && canPasteComponent && isUnitVerticalType && (
+              {!isFinalEvaluation && !isTopicQuiz && !readOnly && showPasteXBlock && canPasteComponent && isUnitVerticalType && (
                 <PasteComponent
                   clipboardData={sharedClipboardData}
                   onClick={
@@ -328,7 +373,7 @@ const CourseUnit = ({ courseId }) => {
               />
               <IframePreviewLibraryXBlockChanges />
             </Layout.Element>
-            {!isFinalEvaluation && (
+            {!isFinalEvaluation && !isTopicQuiz && (
               <Layout.Element>
                 <CourseAuthoringUnitSidebarSlot
                   courseId={courseId}

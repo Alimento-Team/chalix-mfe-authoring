@@ -289,7 +289,7 @@ const FinalEvaluationEditor = ({ courseId, blockId, unitTitle, onViewQuestions, 
                               {quizCount ? `${quizCount} câu hỏi` : 'File'}: <strong>{evaluationData.quiz_evaluation.quiz_file_name}</strong>
                             </div>
                           </div>
-                          <div className="d-flex gap-2">
+                          <div className="d-flex" style={{ gap: '16px' }}>
                             {onViewQuestions && (
                               <Button 
                                 variant="primary" 
@@ -307,7 +307,7 @@ const FinalEvaluationEditor = ({ courseId, blockId, unitTitle, onViewQuestions, 
                                 document.querySelector('input[type="file"][accept=".xlsx,.xls"]')?.click();
                               }}
                             >
-                              � Tải file mới
+                              📋 Tải file mới
                             </Button>
                           </div>
                         </div>
@@ -324,7 +324,7 @@ const FinalEvaluationEditor = ({ courseId, blockId, unitTitle, onViewQuestions, 
                               Định dạng: Cột A: Câu hỏi | Cột B-E: Đáp án A-D | Cột F: Đáp án đúng (A/B/C/D)
                             </div>
                           </div>
-                          <div className="d-flex gap-2">
+                          <div className="d-flex" style={{ gap: '16px' }}>
                             <Button 
                               variant="primary" 
                               size="sm"
