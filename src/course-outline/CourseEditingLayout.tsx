@@ -1096,10 +1096,11 @@ const CourseEditingLayout: React.FC<CourseEditingLayoutProps> = ({
         subtitle: hasQuizzes ? `Đã tạo ${quizzes.length} câu hỏi trắc nghiệm` : 'Chưa có câu hỏi trắc nghiệm',
         icon: QuizIcon,
         primaryAction: 'Tạo mới',
-        secondaryAction: 'Xoá',
+        secondaryAction: 'Tải lên danh sách câu hỏi',
         hasContent: hasQuizzes,
         onClick: hasQuizzes ? () => handleQuizClick(selectedUnit) : undefined,
         onQuizCreate: () => handleQuizCreate(),
+        onQuizUpload: () => handleQuizExcelUpload(),
       },
     ];
   };
@@ -1488,6 +1489,14 @@ const CourseEditingLayout: React.FC<CourseEditingLayoutProps> = ({
                                         (item as any).onProjectPreview();
                                       } catch (err) {
                                         console.error('Error calling project preview handler', err);
+                                      }
+                                    }
+                                    // If quiz type and upload handler is provided, call it
+                                    if (item.type === 'quiz' && (item as any).onQuizUpload) {
+                                      try {
+                                        (item as any).onQuizUpload();
+                                      } catch (err) {
+                                        console.error('Error calling quiz upload handler', err);
                                       }
                                     }
                                     // If quiz-upload without quizzes, download template

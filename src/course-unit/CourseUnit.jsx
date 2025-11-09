@@ -309,8 +309,8 @@ const CourseUnit = ({ courseId }) => {
                 // For topic quiz units, render TopicQuizEditor
                 <>
                   <TopicQuizEditor
-                    courseId={courseId}
-                    unitId={blockId}
+                    unitLocator={blockId}
+                    blockId={blockId}
                     unitTitle={unitTitle}
                   />
                   {/* Also show the default unit content below the quiz editor */}
