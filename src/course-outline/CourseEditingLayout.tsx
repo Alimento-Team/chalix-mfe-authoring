@@ -1404,7 +1404,7 @@ const CourseEditingLayout: React.FC<CourseEditingLayoutProps> = ({
               <Card className="content-details-card">
                 {selectedSection && (
                   <>
-                    <Card.Header className={isFinalEvaluationUnit ? "bg-warning text-dark" : "bg-info text-white"}>
+                    <Card.Header className={isFinalEvaluationUnit ? " text-dark" : "bg-info text-white"}>
                       <Row className="align-items-center">
                         <Col xs="auto">
                           <MenuIcon size="md" className="me-2" />
