@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
 import {
-  Card, Button, Form, Alert, Spinner, Badge, Tabs, Tab, Toast,
+  Card, Button, Form, Alert, Spinner, Badge, Toast,
 } from '@openedx/paragon';
 import { getConfig } from '@edx/frontend-platform';
 import { getAuthenticatedHttpClient } from '@edx/frontend-platform/auth';
@@ -238,49 +238,46 @@ const FinalEvaluationEditor = ({ courseId, blockId, unitTitle, onViewQuestions, 
         />
         <Card.Body>
           {evaluationData && (
-            <Tabs variant="tabs" defaultActiveKey={evaluationData.has_quiz ? "quiz" : "practical"} className="mb-3">
-              {/* Practical Assignment Tab */}
+            <>
+              {/* Practical Assignment Configuration */}
               {evaluationData.has_practical && (
-                <Tab eventKey="practical" title="📝 Nộp bài thu hoạch">
-                  <div className="mt-3">
-                    <Form.Group className="mb-3">
-                      <Form.Label>Yêu cầu bài tập:</Form.Label>
-                      <Form.Control
-                        as="textarea"
-                        rows={6}
-                        value={practicalQuestion}
-                        onChange={(e) => setPracticalQuestion(e.target.value)}
-                        placeholder="Nhập câu hỏi hoặc hướng dẫn cho bài thực hành..."
-                      />
-                      <Form.Text className="text-muted">
-                        Học viên sẽ thấy nội dung này và nộp file kết quả (DOCX, PPTX, PDF).
-                      </Form.Text>
-                    </Form.Group>
+                <div className="p-3 border rounded">
+                  <Form.Group className="mb-3">
+                    <Form.Label>Yêu cầu bài tập:</Form.Label>
+                    <Form.Control
+                      as="textarea"
+                      rows={6}
+                      value={practicalQuestion}
+                      onChange={(e) => setPracticalQuestion(e.target.value)}
+                      placeholder="Nhập câu hỏi hoặc hướng dẫn cho bài thực hành..."
+                    />
+                    <Form.Text className="text-muted">
+                      Học viên sẽ thấy nội dung này và nộp file kết quả (DOCX, PPTX, PDF).
+                    </Form.Text>
+                  </Form.Group>
 
-                    <Button 
-                      variant="primary" 
-                      onClick={savePracticalQuestion}
-                      disabled={saving}
-                    >
-                      {saving ? (
-                        <>
-                          <Spinner size="sm" className="me-2" />
-                          Đang lưu...
-                        </>
-                      ) : (
-                        '💾 Lưu câu hỏi'
-                      )}
-                    </Button>
-                  </div>
-                </Tab>
+                  <Button 
+                    variant="primary" 
+                    onClick={savePracticalQuestion}
+                    disabled={saving}
+                  >
+                    {saving ? (
+                      <>
+                        <Spinner size="sm" className="me-2" />
+                        Đang lưu...
+                      </>
+                    ) : (
+                      '💾 Lưu câu hỏi'
+                    )}
+                  </Button>
+                </div>
               )}
 
-              {/* Quiz Tab */}
+              {/* Quiz Configuration */}
               {evaluationData.has_quiz && (
-                <Tab eventKey="quiz" title="📊 Làm bài trắc nghiệm">
-                  <div className="mt-3">
-                    {/* Quiz summary and actions - shown only when quiz file exists */}
-                    {evaluationData.quiz_evaluation?.has_quiz_file && (
+                <div className="p-3 border rounded">
+                  {/* Quiz summary and actions - shown only when quiz file exists */}
+                  {evaluationData.quiz_evaluation?.has_quiz_file && (
                       <Alert variant="success" className="mb-4">
                         <div className="d-flex justify-content-between align-items-center">
                           <div>
@@ -447,10 +444,9 @@ const FinalEvaluationEditor = ({ courseId, blockId, unitTitle, onViewQuestions, 
                       }}
                       style={{ display: 'none' }}
                     />
-                  </div>
-                </Tab>
+                </div>
               )}
-            </Tabs>
+            </>
           )}
         </Card.Body>
       </Card>

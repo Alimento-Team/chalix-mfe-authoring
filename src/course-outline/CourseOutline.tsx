@@ -72,7 +72,6 @@ interface CourseOutlineProps {
 const CourseOutline = ({ courseId }: CourseOutlineProps) => {
   const intl = useIntl();
   const location = useLocation();
-
   const {
     courseUsageKey,
     courseName,
@@ -528,8 +527,8 @@ const CourseOutline = ({ courseId }: CourseOutlineProps) => {
                       handleVideoSharingOptionChange={handleVideoSharingOptionChange}
                     />
                     {!errors?.outlineIndexApi && (
-                      <div className="pt-4">
-                        {sections.length ? (
+                        <>
+                          {sections.length ? (
                           <>
                             <DraggableList
                               items={sections}
@@ -659,7 +658,7 @@ const CourseOutline = ({ courseId }: CourseOutlineProps) => {
                             )}
                           </EmptyPlaceholder>
                         )}
-                      </div>
+                        </>
                     )}
                   </section>
                 </div>

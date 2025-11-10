@@ -15,6 +15,8 @@ import {
   Form,
   FormControl,
   FormCheck,
+  Tab,
+  Tabs,
 } from '@openedx/paragon';
 import {
   Home as HomeIcon,
@@ -36,6 +38,7 @@ import {
 } from '@openedx/paragon/icons';
 import { XBlock } from '@src/data/types';
 import FinalEvaluationEditor from '../course-unit/final-evaluation/FinalEvaluationEditor';
+import CourseProgress from './course-progress/CourseProgress';
 import { addVideoFile, deleteVideoFile, fetchVideos, fetchUnitVideos, addVideoUrlToUnit } from '../files-and-videos/videos-page/data/thunks';
 import { hasUnitVideos, hasUnitSlides, getUnitVideos } from '../files-and-videos/videos-page/data/selectors';
 import { fetchCourseOutlineIndexQuery, fetchCourseSectionQuery } from './data/thunk';
@@ -93,6 +96,7 @@ const CourseEditingLayout: React.FC<CourseEditingLayoutProps> = ({
   }, []);
   const dispatch = useDispatch();
   const [selectedSection, setSelectedSection] = useState<XBlock | null>(null);
+  const [activeTab, setActiveTab] = useState<'content' | 'progress'>('content');
   const uploadingIdsRef = useRef<{ uploadData: Record<string, any>; uploadCount: number }>({ 
     uploadData: {}, 
     uploadCount: 0 
@@ -1335,6 +1339,15 @@ const CourseEditingLayout: React.FC<CourseEditingLayoutProps> = ({
             </Card.Body>
           </Card>
 
+          {/* Tabs for Course Content and Course Progress */}
+          <Tabs
+            activeKey={activeTab}
+            onSelect={(key) => setActiveTab(key as 'content' | 'progress')}
+            className="mb-3"
+          >
+            <Tab eventKey="content" title="Nội dung khoá học">
+              {/* Course Content tab wraps existing Main Content Layout */}
+              
           {/* Main Content Layout */}
           <Row>
             {/* Left Sidebar - Course Units */}
@@ -1591,6 +1604,15 @@ const CourseEditingLayout: React.FC<CourseEditingLayoutProps> = ({
               </Card>
             </Col>
           </Row>
+              
+            </Tab>
+            
+            <Tab eventKey="progress" title="Tiến độ lớp học">
+              {/* Course Progress tab */}
+              <CourseProgress courseId={courseId} />
+            </Tab>
+          </Tabs>
+          
         </Container>
       </div>
 
