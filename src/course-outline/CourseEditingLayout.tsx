@@ -1607,7 +1607,7 @@ const CourseEditingLayout: React.FC<CourseEditingLayoutProps> = ({
               
             </Tab>
             
-            <Tab eventKey="progress" title="Tiến độ lớp học">
+            <Tab eventKey="progress" title="Chấm bài tiểu luận">
               {/* Course Progress tab */}
               <CourseProgress courseId={courseId} />
             </Tab>

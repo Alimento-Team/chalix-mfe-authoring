@@ -286,7 +286,7 @@ const CourseProgress = ({ courseId }) => {
     <Container className="py-4">
       <Row className="mb-4">
         <Col>
-          <h3>Tiến độ lớp học</h3>
+          <h3>Chấm bài tiểu luận</h3>
           <p className="text-muted">
             Tổng số học viên: {learners.length} | 
             Đã nộp bài: {learners.filter(l => l.has_submission).length} | 
