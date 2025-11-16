@@ -1,4 +1,6 @@
-@import "~@openedx/paragon/styles/scss/core/utilities-only";
+@import "~@openedx/paragon/styles/scss/core/functions";
+@import "~@openedx/paragon/styles/scss/core/variables";
+@import "~@openedx/paragon/styles/scss/core/utilities";
 
 .summary-radio {
   display: flex;
@@ -14,10 +16,10 @@
     border-color: theme-color("primary");
   }
 
-  > div {
+  >div {
     flex: 1;
 
-    > label {
+    >label {
       min-height: 80px;
       flex-wrap: wrap;
       justify-content: space-between;

@@ -12,6 +12,8 @@ const config = createConfig('webpack-prod', {
     fallback: {
       fs: false,
       constants: false,
+      stream: false,
+      timers: false,
     },
   },
 });
@@ -38,5 +40,53 @@ config.module.rules.push({
     fullySpecified: false,
   },
 });
+
+// Add proper includePaths for SCSS to resolve bootstrap vendor imports
+const sassRule = config.module.rules.find(
+  rule => rule.test && rule.test.toString().includes('scss')
+);
+if (sassRule && sassRule.use) {
+  const sassLoaderIndex = sassRule.use.findIndex(
+    loader => loader.loader && loader.loader.includes('sass-loader')
+  );
+  if (sassLoaderIndex !== -1 && sassRule.use[sassLoaderIndex].options) {
+    sassRule.use[sassLoaderIndex].options.sassOptions = {
+      ...(sassRule.use[sassLoaderIndex].options.sassOptions || {}),
+      includePaths: [
+        path.resolve(__dirname, 'node_modules'),
+        path.resolve(__dirname, 'node_modules/bootstrap/scss'),
+      ],
+    };
+  }
+}
+
+// Disable image optimization for production builds to avoid sharp module issues
+// Find and disable image-minimizer-webpack-plugin
+config.optimization = config.optimization || {};
+config.optimization.minimizer = (config.optimization.minimizer || []).filter(
+  plugin => {
+    // Remove image-minimizer-webpack-plugin
+    return !plugin.constructor.name.includes('ImageMinimizerPlugin');
+  }
+);
+
+// Add fallback for xmlbuilder to handle missing modules
+config.resolve.alias = {
+  ...config.resolve.alias,
+  // Ignore xmlbuilder problematic modules - mammoth doesn't actually need them for basic usage
+  'xmlbuilder/lib/XMLDocument': false,
+  'xmlbuilder/lib/XMLDocumentCB': false,
+  'xmlbuilder/lib/XMLStringWriter': false,
+  'xmlbuilder/lib/XMLStreamWriter': false,
+};
+
+// Ignore missing optional dependencies warnings
+config.ignoreWarnings = [
+  /Can't resolve 'xmlbuilder/,
+  /Can't resolve '\.\/XMLDocument'/,
+  /Can't resolve '\.\/XMLDocumentCB'/,
+  /Can't resolve '\.\/XMLStringWriter'/,
+  /Can't resolve '\.\/XMLStreamWriter'/,
+];
 
 module.exports = config;
