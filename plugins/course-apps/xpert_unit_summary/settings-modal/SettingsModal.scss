@@ -1,5 +1,7 @@
 @import "~@openedx/paragon/styles/scss/core/functions";
 @import "~@openedx/paragon/styles/scss/core/variables";
+@import "~bootstrap/scss/mixins";
+@import "~@openedx/paragon/styles/scss/core/bootstrap-override/mixins";
 @import "~@openedx/paragon/styles/scss/core/utilities";
 
 .summary-radio {
