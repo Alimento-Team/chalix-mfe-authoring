@@ -1,8 +1,5 @@
-@import "~@openedx/paragon/styles/scss/core/functions";
+// Import only essential variables - avoid utilities that require mixins
 @import "~@openedx/paragon/styles/scss/core/variables";
-@import "~bootstrap/scss/mixins";
-@import "~@openedx/paragon/styles/scss/core/bootstrap-override/mixins";
-@import "~@openedx/paragon/styles/scss/core/utilities";
 
 .summary-radio {
   display: flex;
