@@ -68,13 +68,9 @@ if (sassRule && sassRule.use) {
         path.resolve(__dirname, 'node_modules/bootstrap/scss'),
         path.resolve(__dirname, 'node_modules/@openedx/paragon/styles/scss'),
       ],
-      // Ensure consistent path resolution across platforms
+      // Suppress dependency warnings
       quietDeps: true,
-      sourceMap: false,
     };
-    
-    // Set webpackImporter to false to use native Sass importer (more reliable)
-    sassRule.use[sassLoaderIndex].options.webpackImporter = false;
   }
 }
 
