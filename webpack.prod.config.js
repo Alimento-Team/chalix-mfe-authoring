@@ -46,22 +46,35 @@ config.module.rules.push({
   },
 });
 
-// Add proper includePaths for SCSS to resolve bootstrap vendor imports
+// Configure SCSS loader with proper path resolution for cross-platform compatibility
 const sassRule = config.module.rules.find(
   rule => rule.test && rule.test.toString().includes('scss')
 );
 if (sassRule && sassRule.use) {
   const sassLoaderIndex = sassRule.use.findIndex(
-    loader => loader.loader && loader.loader.includes('sass-loader')
+    loader => loader && loader.loader && loader.loader.includes('sass-loader')
   );
-  if (sassLoaderIndex !== -1 && sassRule.use[sassLoaderIndex].options) {
+  if (sassLoaderIndex !== -1) {
+    if (!sassRule.use[sassLoaderIndex].options) {
+      sassRule.use[sassLoaderIndex].options = {};
+    }
+    
+    // Ensure sassOptions exists and configure includePaths
     sassRule.use[sassLoaderIndex].options.sassOptions = {
       ...(sassRule.use[sassLoaderIndex].options.sassOptions || {}),
       includePaths: [
+        path.resolve(__dirname, 'src'),
         path.resolve(__dirname, 'node_modules'),
         path.resolve(__dirname, 'node_modules/bootstrap/scss'),
+        path.resolve(__dirname, 'node_modules/@openedx/paragon/styles/scss'),
       ],
+      // Ensure consistent path resolution across platforms
+      quietDeps: true,
+      sourceMap: false,
     };
+    
+    // Set webpackImporter to false to use native Sass importer (more reliable)
+    sassRule.use[sassLoaderIndex].options.webpackImporter = false;
   }
 }
 
