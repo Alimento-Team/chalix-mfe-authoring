@@ -8,6 +8,11 @@ const config = createConfig('webpack-prod', {
       '@src': path.resolve(__dirname, 'src/'),
       // Plugins can use 'CourseAuthoring' as an import alias for this app:
       CourseAuthoring: path.resolve(__dirname, 'src/'),
+      // Ignore xmlbuilder problematic modules - mammoth doesn't actually need them
+      'xmlbuilder/lib/XMLDocument': false,
+      'xmlbuilder/lib/XMLDocumentCB': false,
+      'xmlbuilder/lib/XMLStringWriter': false,
+      'xmlbuilder/lib/XMLStreamWriter': false,
     },
     fallback: {
       fs: false,
@@ -70,23 +75,14 @@ config.optimization.minimizer = (config.optimization.minimizer || []).filter(
   }
 );
 
-// Add fallback for xmlbuilder to handle missing modules
-config.resolve.alias = {
-  ...config.resolve.alias,
-  // Ignore xmlbuilder problematic modules - mammoth doesn't actually need them for basic usage
-  'xmlbuilder/lib/XMLDocument': false,
-  'xmlbuilder/lib/XMLDocumentCB': false,
-  'xmlbuilder/lib/XMLStringWriter': false,
-  'xmlbuilder/lib/XMLStreamWriter': false,
-};
-
-// Ignore missing optional dependencies warnings
+// Ignore missing optional dependencies warnings for xmlbuilder and source maps
 config.ignoreWarnings = [
   /Can't resolve 'xmlbuilder/,
   /Can't resolve '\.\/XMLDocument'/,
   /Can't resolve '\.\/XMLDocumentCB'/,
   /Can't resolve '\.\/XMLStringWriter'/,
   /Can't resolve '\.\/XMLStreamWriter'/,
+  /Failed to parse source map/,
 ];
 
 module.exports = config;
