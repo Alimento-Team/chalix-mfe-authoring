@@ -102,7 +102,9 @@ const Header = ({
               if (isDevelopment) {
                 window.location.href = `${protocol}//${hostname}:1996/learner-dashboard/?tab=personalized`;
               } else {
-                window.location.href = `${lmsBaseUrl}/dashboard?tab=personalized`;
+                // Ensure /dashboard/ ends with a slash before query
+                const _dashboard = lmsBaseUrl.replace(/\/$/, '') + '/dashboard/';
+                window.location.href = `${_dashboard}?tab=personalized`;
               }
               break;
             default:
